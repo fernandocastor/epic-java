@@ -582,7 +582,7 @@ public class JavaCompiler implements ClassReader.SourceCompleter {
     protected JCCompilationUnit parse(JavaFileObject filename, CharSequence content) {
         long msec = now();
         JCCompilationUnit tree = make.TopLevel(List.<JCTree.JCAnnotation>nil(),
-                                      null, List.<JCTree>nil());
+                                      null, List.<JCTree>nil(), List.<JCTree>nil());
         if (content != null) {
             if (verbose) {
                 log.printVerbose("parsing.started", filename);
@@ -667,7 +667,8 @@ public class JavaCompiler implements ClassReader.SourceCompleter {
                                       : make.Select(tree, names.fromString(s));
             }
             JCCompilationUnit toplevel =
-                make.TopLevel(List.<JCTree.JCAnnotation>nil(), null, List.<JCTree>nil());
+                make.TopLevel(List.<JCTree.JCAnnotation>nil(), null,
+                              List.<JCTree>nil(), List.<JCTree>nil());
             toplevel.packge = syms.unnamedPackage;
             return attr.attribIdent(tree, toplevel);
         } finally {
@@ -741,7 +742,8 @@ public class JavaCompiler implements ClassReader.SourceCompleter {
             tree = parse(filename, filename.getCharContent(false));
         } catch (IOException e) {
             log.error("error.reading.file", filename, JavacFileManager.getMessage(e));
-            tree = make.TopLevel(List.<JCTree.JCAnnotation>nil(), null, List.<JCTree>nil());
+            tree = make.TopLevel(List.<JCTree.JCAnnotation>nil(), null,
+                                 List.<JCTree>nil(),List.<JCTree>nil());
         } finally {
             log.useSource(prev);
         }

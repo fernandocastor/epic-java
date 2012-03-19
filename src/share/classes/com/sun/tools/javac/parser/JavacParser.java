@@ -194,6 +194,7 @@ public class JavacParser implements Parser {
                 case CLASS:
                 case INTERFACE:
                 case ENUM:
+                case PROPAGATE:
                     return;
                 case IMPORT:
                     if (stopAtImport)
@@ -2211,7 +2212,8 @@ public class JavacParser implements Parser {
                                       parseType(), ident(), true, null);
     }
 
-    /** CompilationUnit = [ { "@" Annotation } PACKAGE Qualident ";"] {ImportDeclaration} {TypeDeclaration}
+    /** CompilationUnit = [ { "@" Annotation } PACKAGE Qualident ";"]
+     *                    {ImportDeclaration} {TypeDeclaration} {PropagateDeclaration}
      */
     public JCTree.JCCompilationUnit parseCompilationUnit() {
         int pos = S.pos();
@@ -2233,6 +2235,7 @@ public class JavacParser implements Parser {
             accept(SEMI);
         }
         ListBuffer<JCTree> defs = new ListBuffer<JCTree>();
+        ListBuffer<JCTree> props = new ListBuffer<JCTree>();
         boolean checkForImports = true;
         while (S.token() != EOF) {
             if (S.pos() <= errorEndPos) {
@@ -2243,6 +2246,8 @@ public class JavacParser implements Parser {
             }
             if (checkForImports && mods == null && S.token() == IMPORT) {
                 defs.append(importDeclaration());
+            } else if (S.token() == PROPAGATE) {
+                props.append(propagateDeclaration());
             } else {
                 JCTree def = typeDeclaration(mods);
                 if (keepDocComments && dc != null && docComments.get(def) == dc) {
@@ -2258,7 +2263,7 @@ public class JavacParser implements Parser {
                 mods = null;
             }
         }
-        JCTree.JCCompilationUnit toplevel = F.at(pos).TopLevel(packageAnnotations, pid, defs.toList());
+        JCTree.JCCompilationUnit toplevel = F.at(pos).TopLevel(packageAnnotations, pid, defs.toList(), props.toList());
         attach(toplevel, dc);
         if (defs.elems.isEmpty())
             storeEnd(toplevel, S.prevEndPos());
@@ -2310,6 +2315,42 @@ public class JavacParser implements Parser {
         }
     }
 
+
+    /*
+     * TODO:
+     *   -Instead of Ident, allow fully qualified namespace/package with . notation
+     *   -Eventually, make it work with generics
+     */
+
+    /** propagateDeclaration = { PROPAGATE Ident ":" PropagateMethod "->" PropagateMethod ";" }
+     */
+    JCTree propagateDeclaration() {
+        S.nextToken(); //consume 'propagate'
+
+        //Name thrown = ident();
+        JCExpression thrown = parseType();
+
+        accept(COLON);
+
+        List<JCVariableDecl> lhs = propagateMethod();
+
+        accept(RIGHT_ARROW);
+
+        List<JCVariableDecl>  rhs = propagateMethod();
+
+        accept(SEMI);
+        return toP(F.at(S.pos()).Propagate(thrown, lhs, rhs));
+    }
+    /**
+     * PropagateMethod = Ident "." Ident FormalParameters
+     */
+    List<JCVariableDecl> propagateMethod() {
+        accept(IDENTIFIER);
+        accept(DOT);
+        accept(IDENTIFIER);
+        return formalParameters();
+    }
+
     /** ClassOrInterfaceOrEnumDeclaration = ModifiersOpt
      *           (ClassDeclaration | InterfaceDeclaration | EnumDeclaration)
      *  @param mods     Any modifiers starting the class or interface declaration
@@ -2332,8 +2373,8 @@ public class JavacParser implements Parser {
                 } else {
                     errs = List.<JCTree>of(mods);
                 }
-                return toP(F.Exec(syntaxError(pos, errs, "expected3",
-                                              CLASS, INTERFACE, ENUM)));
+                return toP(F.Exec(syntaxError(pos, errs, "expected4",
+                                              CLASS, INTERFACE, ENUM, PROPAGATE)));
             }
         } else {
             if (S.token() == ENUM) {

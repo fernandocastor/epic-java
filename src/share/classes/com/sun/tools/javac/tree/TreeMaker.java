@@ -121,7 +121,8 @@ public class TreeMaker implements JCTree.Factory {
      */
     public JCCompilationUnit TopLevel(List<JCAnnotation> packageAnnotations,
                                       JCExpression pid,
-                                      List<JCTree> defs) {
+                                      List<JCTree> defs,
+                                      List<JCTree> props) {
         Assert.checkNonNull(packageAnnotations);
         for (JCTree node : defs)
             Assert.check(node instanceof JCClassDecl
@@ -132,7 +133,7 @@ public class TreeMaker implements JCTree.Factory {
                     && ((JCExpressionStatement)node).expr instanceof JCErroneous),
                 node.getClass().getSimpleName());
         JCCompilationUnit tree = new JCCompilationUnit(packageAnnotations, pid, defs,
-                                     null, null, null, null);
+                                     props, null, null, null, null);
         tree.pos = pos;
         return tree;
     }
@@ -143,6 +144,13 @@ public class TreeMaker implements JCTree.Factory {
         return tree;
     }
 
+    public JCPropagate Propagate(JCExpression thrown,
+                                List<JCVariableDecl> lhs,
+                                List<JCVariableDecl> rhs) {
+        JCPropagate tree = new JCPropagate(thrown, lhs, rhs);
+        tree.pos = pos;
+        return tree;
+    }
     public JCClassDecl ClassDef(JCModifiers mods,
                                 Name name,
                                 List<JCTypeParameter> typarams,

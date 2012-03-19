@@ -319,7 +319,8 @@ public class TreeCopier<P> implements TreeVisitor<JCTree,P> {
         List<JCAnnotation> packageAnnotations = copy(t.packageAnnotations, p);
         JCExpression pid = copy(t.pid, p);
         List<JCTree> defs = copy(t.defs, p);
-        return M.at(t.pos).TopLevel(packageAnnotations, pid, defs);
+        List<JCTree> props = copy(t.props, p);
+        return M.at(t.pos).TopLevel(packageAnnotations, pid, defs, props);
     }
 
     public JCTree visitTry(TryTree node, P p) {

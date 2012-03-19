@@ -77,6 +77,7 @@ public enum Token implements Formattable {
     PRIVATE("private"),
     PROTECTED("protected"),
     PUBLIC("public"),
+    PROPAGATE("propagate"),
     RETURN("return"),
     SHORT("short"),
     STATIC("static"),
@@ -149,6 +150,7 @@ public enum Token implements Formattable {
     GTGTEQ(">>="),
     GTGTGTEQ(">>>="),
     MONKEYS_AT("@"),
+    RIGHT_ARROW("->"),
     CUSTOM;
 
     Token() {
