@@ -323,6 +323,14 @@ public class TreeCopier<P> implements TreeVisitor<JCTree,P> {
         return M.at(t.pos).TopLevel(packageAnnotations, pid, defs, props);
     }
 
+    public JCTree visitPropagate(PropagateTree node, P p) {
+        JCPropagate prop = (JCPropagate) node;
+        JCExpression thrown = copy(prop.thrown, p);
+        List<JCVariableDecl> lhs = copy(prop.lhs, p);
+        List<JCVariableDecl> rhs = copy(prop.rhs, p);
+        return M.at(prop.pos).Propagate(thrown, lhs, rhs);
+    }
+
     public JCTree visitTry(TryTree node, P p) {
         JCTry t = (JCTry) node;
         List<JCTree> resources = copy(t.resources, p);

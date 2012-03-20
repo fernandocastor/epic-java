@@ -695,6 +695,10 @@ public class Attr extends JCTree.Visitor {
         }
     }
 
+    public void visitPropagate(JCPropagate tree) {
+
+    }
+
     public void visitMethodDef(JCMethodDecl tree) {
         MethodSymbol m = tree.sym;
 

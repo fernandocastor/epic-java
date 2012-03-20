@@ -43,6 +43,7 @@ public interface CompilationUnitTree extends Tree {
     ExpressionTree getPackageName();
     List<? extends ImportTree> getImports();
     List<? extends Tree> getTypeDecls();
+    List<? extends Tree> getPropagates();
     JavaFileObject getSourceFile();
 
     /**

@@ -93,6 +93,7 @@ public interface TreeVisitor<R,P> {
     R visitSynchronized(SynchronizedTree node, P p);
     R visitThrow(ThrowTree node, P p);
     R visitCompilationUnit(CompilationUnitTree node, P p);
+    R visitPropagate(PropagateTree tree, P p);
     R visitTry(TryTree node, P p);
     R visitParameterizedType(ParameterizedTypeTree node, P p);
     R visitUnionType(UnionTypeTree node, P p);

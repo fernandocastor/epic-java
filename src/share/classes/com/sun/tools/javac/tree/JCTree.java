@@ -492,6 +492,11 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
                     break;
             return typeDefs;
         }
+
+        public List<JCTree> getPropagates() {
+            return this.props;
+        }
+
         @Override
         public <R,D> R accept(TreeVisitor<R,D> v, D d) {
             return v.visitCompilationUnit(this, d);
@@ -534,12 +539,12 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
 
         @Override
         public void accept(Visitor v) {
-            //v.visitPropagate(this);
+            v.visitPropagate(this);
         }
 
         @Override
         public <R, D> R accept(TreeVisitor<R, D> v, D d) {
-            return null;//v.visitPropagate(this, d);
+            return v.visitPropagate(this, d);
         }
 
         public Kind getKind() { return Kind.PROPAGATE; }
@@ -2234,6 +2239,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
      */
     public static abstract class Visitor {
         public void visitTopLevel(JCCompilationUnit that)    { visitTree(that); }
+        public void visitPropagate(JCPropagate that)         { visitTree(that); }
         public void visitImport(JCImport that)               { visitTree(that); }
         public void visitClassDef(JCClassDecl that)          { visitTree(that); }
         public void visitMethodDef(JCMethodDecl that)        { visitTree(that); }
