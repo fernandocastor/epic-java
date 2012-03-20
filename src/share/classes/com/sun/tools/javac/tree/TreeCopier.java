@@ -334,7 +334,8 @@ public class TreeCopier<P> implements TreeVisitor<JCTree,P> {
     public JCTree visitPropagateMethod(PropagateMethodTree node, P p) {
         JCPropagateMethod m = (JCPropagateMethod) node;
         List<JCVariableDecl> params = copy(m.params);
-        return M.at(m.pos).PropagateMethod(m.clazz, m.name, params);
+        JCFieldAccess selec = copy(m.selector);
+        return M.at(m.pos).PropagateMethod(selec, params);
     }
 
     public JCTree visitTry(TryTree node, P p) {

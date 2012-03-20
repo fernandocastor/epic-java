@@ -555,30 +555,38 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
 
     public static class JCPropagateMethod extends JCTree implements PropagateMethodTree {
 
-        public JCExpression clazz;
-        public Name name;
+        public JCFieldAccess selector;
         public List<JCVariableDecl> params;
 
         protected JCPropagateMethod(JCExpression clazz,
                                     Name name,
                                     List<JCVariableDecl> params) {
-            this.clazz = clazz;
-            this.name = name;
+            this.selector = new JCFieldAccess(clazz, name, null);
+            //maybe not really clazz.pos, but better then left it zero'd
+            this.selector.pos = clazz.pos;
+            this.params = params;
+        }
+        protected JCPropagateMethod(JCFieldAccess selec,
+                                    List<JCVariableDecl> params) {
+            this.selector = selec;
             this.params = params;
         }
 
-        public JCExpression getClassName() {
-            return this.clazz;
-        }
-
-        public Name getMethodName() {
-            return this.name;
+        public JCExpression getSelector() {
+            return this.selector;
         }
 
         public List<JCVariableDecl> getParams() {
             return this.params;
         }
 
+        public List<JCExpression> getArgs() {
+            ListBuffer<JCExpression> lst = new ListBuffer<JCExpression>();
+            for (JCVariableDecl v : this.params) {
+                lst.add(new JCIdent(v.name, v.sym));
+            }
+            return lst.toList();
+        }
         @Override
         public int getTag() {
             return PROPAGATE_METHOD;

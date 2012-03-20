@@ -159,6 +159,12 @@ public class TreeMaker implements JCTree.Factory {
         tree.pos = pos;
         return tree;
     }
+    public JCPropagateMethod PropagateMethod(JCFieldAccess selec,
+                                             List<JCVariableDecl> params) {
+        JCPropagateMethod tree = new JCPropagateMethod(selec, params);
+        tree.pos = pos;
+        return tree;
+    }
 
     public JCClassDecl ClassDef(JCModifiers mods,
                                 Name name,

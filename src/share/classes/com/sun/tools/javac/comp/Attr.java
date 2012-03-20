@@ -699,6 +699,22 @@ public class Attr extends JCTree.Visitor {
         //checking if the exception is a throwable
         JCExpression t = tree.getThrows();
         chk.checkType(t.pos(), t.type, syms.throwableType);
+
+        tree.lhs.accept(this);
+        tree.rhs.accept(this);
+    }
+
+    public void visitPropagateMethod(JCPropagateMethod tree) {
+        //checking if the method exists...
+        //Given C.m(), we should not care if m is static or instance-specific.
+
+        Env<AttrContext> localEnv = env.dup(tree, env.info.dup());
+        ListBuffer<Type> argtypes = new ListBuffer<Type>();
+        for(JCVariableDecl p: tree.params) {
+            argtypes.add(attribStat(p, localEnv));
+        }
+        Type mpt = newMethTemplate(argtypes.toList(), List.<Type>nil());
+        Type mtype = attribExpr(tree.selector, localEnv, mpt);
     }
 
     public void visitMethodDef(JCMethodDecl tree) {
@@ -2564,10 +2580,20 @@ public class Attr extends JCTree.Visitor {
                 }
                 break;
             case MTH: {
-                JCMethodInvocation app = (JCMethodInvocation)env.tree;
-                owntype = checkMethod(site, sym, env, app.args,
-                                      pt.getParameterTypes(), pt.getTypeArguments(),
-                                      env.info.varArgs);
+                if (env.tree.getTag() == JCTree.APPLY) {
+                    JCMethodInvocation app = (JCMethodInvocation)env.tree;
+                    owntype = checkMethod(site, sym, env, app.args,
+                                          pt.getParameterTypes(), pt.getTypeArguments(),
+                                          env.info.varArgs);
+                } else if (env.tree.getTag() == JCTree.PROPAGATE_METHOD){
+                    JCPropagateMethod app = (JCPropagateMethod)env.tree;
+                    owntype = checkMethod(site, sym, env, app.getArgs(),
+                                          pt.getParameterTypes(), pt.getTypeArguments(),
+                                          env.info.varArgs);
+                } else {
+                    throw new AssertionError("unexpected kind: " + tree.getKind() +
+                                         " in tree " + tree);
+                }
                 break;
             }
             case PCK: case ERR:
@@ -3084,7 +3110,7 @@ public class Attr extends JCTree.Visitor {
         }
 
         for (JCTree tree: toplevel.getPropagates()) {
-            tree.accept(this);
+            attribExpr(tree, env);
         }
     }
 

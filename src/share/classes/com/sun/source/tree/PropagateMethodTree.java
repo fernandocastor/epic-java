@@ -1,9 +1,7 @@
 package com.sun.source.tree;
-import javax.lang.model.element.Name;
 import java.util.List;
 
 public interface PropagateMethodTree extends ExpressionTree {
-    ExpressionTree getClassName();
-    Name getMethodName();
+    ExpressionTree getSelector();
     List<? extends VariableTree> getParams();
 }
