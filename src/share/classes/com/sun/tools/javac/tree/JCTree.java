@@ -580,10 +580,10 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
             return this.params;
         }
 
-        public List<JCExpression> getArgs() {
-            ListBuffer<JCExpression> lst = new ListBuffer<JCExpression>();
+        public List<Type> getArgTypes() {
+            ListBuffer<Type> lst = new ListBuffer<Type>();
             for (JCVariableDecl v : this.params) {
-                lst.add(new JCIdent(v.name, v.sym));
+                lst.add(v.type);
             }
             return lst.toList();
         }

@@ -713,8 +713,19 @@ public class Attr extends JCTree.Visitor {
         for(JCVariableDecl p: tree.params) {
             argtypes.add(attribStat(p, localEnv));
         }
-        Type mpt = newMethTemplate(argtypes.toList(), List.<Type>nil());
-        Type mtype = attribExpr(tree.selector, localEnv, mpt);
+
+        //Type mpt = newMethTemplate(argtypes.toList(), List.<Type>nil());
+        //Type mtype = attribExpr(tree.selector, localEnv, mpt);
+        int skind = VAL | TYP;
+        //the following will attribute the lhs/rhs classes
+        Type site = attribTree(tree.selector.selected, env, skind, Infer.anyPoly);
+        Symbol sitesym = TreeInfo.symbol(tree.selector.selected);
+
+        Name name = tree.selector.name;
+        DiagnosticPosition pos = tree.pos();
+        rs.resolveQualifiedMethod(pos, env, site.tsym, site, name,
+                tree.getArgTypes(), pt.getTypeArguments(), false);
+
     }
 
     public void visitMethodDef(JCMethodDecl tree) {
@@ -2580,20 +2591,10 @@ public class Attr extends JCTree.Visitor {
                 }
                 break;
             case MTH: {
-                if (env.tree.getTag() == JCTree.APPLY) {
-                    JCMethodInvocation app = (JCMethodInvocation)env.tree;
-                    owntype = checkMethod(site, sym, env, app.args,
-                                          pt.getParameterTypes(), pt.getTypeArguments(),
-                                          env.info.varArgs);
-                } else if (env.tree.getTag() == JCTree.PROPAGATE_METHOD){
-                    JCPropagateMethod app = (JCPropagateMethod)env.tree;
-                    owntype = checkMethod(site, sym, env, app.getArgs(),
-                                          pt.getParameterTypes(), pt.getTypeArguments(),
-                                          env.info.varArgs);
-                } else {
-                    throw new AssertionError("unexpected kind: " + tree.getKind() +
-                                         " in tree " + tree);
-                }
+                 JCMethodInvocation app = (JCMethodInvocation)env.tree;
+                 owntype = checkMethod(site, sym, env, app.args,
+                                       pt.getParameterTypes(), pt.getTypeArguments(),
+                                       env.info.varArgs);
                 break;
             }
             case PCK: case ERR:

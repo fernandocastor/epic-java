@@ -670,7 +670,6 @@ public class Resolve {
      *  @param allowBoxing Allow boxing conversions of arguments.
      *  @param useVarargs Box trailing arguments into an array for varargs.
      */
-    @SuppressWarnings("fallthrough")
     Symbol selectBest(Env<AttrContext> env,
                       Type site,
                       List<Type> argtypes,
@@ -680,6 +679,21 @@ public class Resolve {
                       boolean allowBoxing,
                       boolean useVarargs,
                       boolean operator) {
+        return selectBest(env, site, argtypes, typeargtypes,
+                sym, bestSoFar, allowBoxing, useVarargs, operator, true);
+    }
+
+    @SuppressWarnings("fallthrough")
+    Symbol selectBest(Env<AttrContext> env,
+                      Type site,
+                      List<Type> argtypes,
+                      List<Type> typeargtypes,
+                      Symbol sym,
+                      Symbol bestSoFar,
+                      boolean allowBoxing,
+                      boolean useVarargs,
+                      boolean operator,
+                      boolean checkAccess) {
         if (sym.kind == ERR) return bestSoFar;
         if (!sym.isInheritedIn(site.tsym, types)) return bestSoFar;
         Assert.check(sym.kind < AMBIGUOUS);
@@ -698,7 +712,7 @@ public class Resolve {
                 return bestSoFar;
             }
         }
-        if (!isAccessible(env, site, sym)) {
+        if (checkAccess && !isAccessible(env, site, sym)) {
             return (bestSoFar.kind == ABSENT_MTH)
                 ? new AccessError(env, site, sym)
                 : bestSoFar;
@@ -886,6 +900,18 @@ public class Resolve {
                       boolean allowBoxing,
                       boolean useVarargs,
                       boolean operator) {
+        return findMethod(env, site, name, argtypes, typeargtypes, allowBoxing, useVarargs, operator, true);
+    }
+
+    Symbol findMethod(Env<AttrContext> env,
+                      Type site,
+                      Name name,
+                      List<Type> argtypes,
+                      List<Type> typeargtypes,
+                      boolean allowBoxing,
+                      boolean useVarargs,
+                      boolean operator,
+                      boolean checkAccess) {
         Symbol bestSoFar = methodNotFound;
         return findMethod(env,
                           site,
@@ -898,7 +924,8 @@ public class Resolve {
                           allowBoxing,
                           useVarargs,
                           operator,
-                          new HashSet<TypeSymbol>());
+                          new HashSet<TypeSymbol>(),
+                          checkAccess);
     }
     // where
     private Symbol findMethod(Env<AttrContext> env,
@@ -912,7 +939,8 @@ public class Resolve {
                               boolean allowBoxing,
                               boolean useVarargs,
                               boolean operator,
-                              Set<TypeSymbol> seen) {
+                              Set<TypeSymbol> seen,
+                              boolean checkAccess) {
         for (Type ct = intype; ct.tag == CLASS || ct.tag == TYPEVAR; ct = types.supertype(ct)) {
             while (ct.tag == TYPEVAR)
                 ct = ct.getUpperBound();
@@ -926,11 +954,12 @@ public class Resolve {
                 //- System.out.println(" e " + e.sym);
                 if (e.sym.kind == MTH &&
                     (e.sym.flags_field & SYNTHETIC) == 0) {
+
                     bestSoFar = selectBest(env, site, argtypes, typeargtypes,
                                            e.sym, bestSoFar,
                                            allowBoxing,
                                            useVarargs,
-                                           operator);
+                                           operator, checkAccess);
                 }
             }
             if (name == names.init)
@@ -946,7 +975,8 @@ public class Resolve {
                     bestSoFar = findMethod(env, site, name, argtypes,
                                            typeargtypes,
                                            l.head, abstractok, bestSoFar,
-                                           allowBoxing, useVarargs, operator, seen);
+                                           allowBoxing, useVarargs, operator, seen,
+                                           checkAccess);
                 }
                 if (concrete != bestSoFar &&
                     concrete.kind < ERR  && bestSoFar.kind < ERR &&
@@ -1429,11 +1459,16 @@ public class Resolve {
     Symbol resolveQualifiedMethod(DiagnosticPosition pos, Env<AttrContext> env,
                                   Type site, Name name, List<Type> argtypes,
                                   List<Type> typeargtypes) {
-        return resolveQualifiedMethod(pos, env, site.tsym, site, name, argtypes, typeargtypes);
+        return resolveQualifiedMethod(pos, env, site.tsym, site, name, argtypes, typeargtypes, true);
     }
     Symbol resolveQualifiedMethod(DiagnosticPosition pos, Env<AttrContext> env,
                                   Symbol location, Type site, Name name, List<Type> argtypes,
                                   List<Type> typeargtypes) {
+        return resolveQualifiedMethod(pos, env, location, site, name, argtypes, typeargtypes, true);
+    }
+    Symbol resolveQualifiedMethod(DiagnosticPosition pos, Env<AttrContext> env,
+                                  Symbol location, Type site, Name name, List<Type> argtypes,
+                                  List<Type> typeargtypes, boolean checkAccess) {
         Symbol sym = startResolution();
         List<MethodResolutionPhase> steps = methodResolutionSteps;
         while (steps.nonEmpty() &&
@@ -1442,7 +1477,8 @@ public class Resolve {
             currentStep = steps.head;
             sym = findMethod(env, site, name, argtypes, typeargtypes,
                     steps.head.isBoxingRequired(),
-                    env.info.varArgs = steps.head.isVarargsRequired(), false);
+                    env.info.varArgs = steps.head.isVarargsRequired(), false,
+                    checkAccess);
             methodResolutionCache.put(steps.head, sym);
             steps = steps.tail;
         }
