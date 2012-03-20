@@ -503,16 +503,6 @@ public class Enter extends JCTree.Visitor {
                         memberEnter.memberEnter(tree, topEnv);
                         log.useSource(prev);
                     }
-
-                    if (tree.getPropagates().nonEmpty()) {
-                        //I understand we should memberEnter() the propagates
-                        //and the topEnv is used to store the todo task.
-                        //But I don't know what useSource is for.
-                        JavaFileObject prev = log.useSource(tree.sourcefile);
-                        Env<AttrContext> topEnv = topLevelEnv(tree);
-                        memberEnter.memberEnter(tree.getPropagates(), topEnv);
-                        log.useSource(prev);
-                    }
                 }
             }
         } finally {
