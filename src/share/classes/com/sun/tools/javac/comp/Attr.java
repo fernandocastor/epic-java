@@ -696,7 +696,9 @@ public class Attr extends JCTree.Visitor {
     }
 
     public void visitPropagate(JCPropagate tree) {
-
+        //checking if the exception is a throwable
+        JCExpression t = tree.getThrows();
+        chk.checkType(t.pos(), t.type, syms.throwableType);
     }
 
     public void visitMethodDef(JCMethodDecl tree) {
@@ -3079,6 +3081,10 @@ public class Attr extends JCTree.Visitor {
             chk.validateAnnotations(toplevel.packageAnnotations, toplevel.packge);
         } catch (CompletionFailure ex) {
             chk.completionError(toplevel.pos(), ex);
+        }
+
+        for (JCTree tree: toplevel.getPropagates()) {
+            tree.accept(this);
         }
     }
 

@@ -522,6 +522,18 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
 
         // Process all import clauses.
         memberEnter(tree.defs, env);
+
+        // Process all propagates
+        memberEnter(tree.props, env);
+    }
+
+    public void visitPropagate(JCPropagate tree) {
+        //add env to TODO so we check exception class hierarchy
+        //in Attr.java visitPropagate()
+        todo.append(env);
+
+        //load symbol for the thrown type
+        /*Type exc = */attr.attribType(tree.getThrows(), env);
     }
 
     // process the non-static imports and the static imports of types.
