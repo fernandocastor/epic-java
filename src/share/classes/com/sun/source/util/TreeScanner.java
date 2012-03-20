@@ -128,6 +128,10 @@ public class TreeScanner<R,P> implements TreeVisitor<R,P> {
         return r;
     }
 
+    public R visitPropagateMethod(PropagateMethodTree node, P p) {
+        return scan(node.getParams(), p);
+    }
+
     public R visitImport(ImportTree node, P p) {
         return scan(node.getQualifiedIdentifier(), p);
     }

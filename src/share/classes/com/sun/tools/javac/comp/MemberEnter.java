@@ -533,7 +533,15 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         todo.append(env);
 
         //load symbol for the thrown type
-        /*Type exc = */attr.attribType(tree.getThrows(), env);
+        /*Type exc = */attr.attribType(tree.thrown, env);
+
+        tree.lhs.accept(this);
+        tree.rhs.accept(this);
+    }
+
+    public void visitPropagateMethod(JCPropagateMethod tree ) {
+        //load symbol for the type
+        attr.attribType(tree.clazz, env);
     }
 
     // process the non-static imports and the static imports of types.

@@ -151,6 +151,7 @@ public enum Token implements Formattable {
     GTGTGTEQ(">>>="),
     MONKEYS_AT("@"),
     RIGHT_ARROW("->"),
+    DOUBLE_COLON("::"),
     CUSTOM;
 
     Token() {

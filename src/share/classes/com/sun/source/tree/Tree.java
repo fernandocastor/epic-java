@@ -232,6 +232,8 @@ public interface Tree {
         PARAMETERIZED_TYPE(ParameterizedTypeTree.class),
 
         PROPAGATE(PropagateTree.class),
+        PROPAGATE_METHOD(PropagateMethodTree.class),
+
         /**
          * Used for instances of {@link UnionTypeTree}.
          */

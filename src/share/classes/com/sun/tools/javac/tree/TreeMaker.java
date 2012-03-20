@@ -145,12 +145,21 @@ public class TreeMaker implements JCTree.Factory {
     }
 
     public JCPropagate Propagate(JCExpression thrown,
-                                List<JCVariableDecl> lhs,
-                                List<JCVariableDecl> rhs) {
+                                JCPropagateMethod lhs,
+                                JCPropagateMethod rhs) {
         JCPropagate tree = new JCPropagate(thrown, lhs, rhs);
         tree.pos = pos;
         return tree;
     }
+
+    public JCPropagateMethod PropagateMethod(JCExpression clazz,
+                                             Name name,
+                                             List<JCVariableDecl> params) {
+        JCPropagateMethod tree = new JCPropagateMethod(clazz, name, params);
+        tree.pos = pos;
+        return tree;
+    }
+
     public JCClassDecl ClassDef(JCModifiers mods,
                                 Name name,
                                 List<JCTypeParameter> typarams,

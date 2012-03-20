@@ -94,9 +94,11 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
 
     public static final int PROPAGATE = CLASSDEF+1;
 
+    public static final int PROPAGATE_METHOD = PROPAGATE+1;
+
     /** Method definitions, of type MethodDef.
      */
-    public static final int METHODDEF = PROPAGATE + 1;
+    public static final int METHODDEF = PROPAGATE_METHOD + 1;
 
     /** Variable definitions, of type VarDef.
      */
@@ -510,11 +512,11 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
 
     public static class JCPropagate extends JCTree implements PropagateTree {
         public JCExpression thrown;
-        public List<JCVariableDecl> lhs;
-        public List<JCVariableDecl> rhs;
+        public JCPropagateMethod lhs;
+        public JCPropagateMethod rhs;
         protected JCPropagate(JCExpression thrown,
-                              List<JCVariableDecl> lhs,
-                              List<JCVariableDecl> rhs) {
+                              JCPropagateMethod lhs,
+                              JCPropagateMethod rhs) {
             this.thrown = thrown;
             this.lhs = lhs;
             this.rhs = rhs;
@@ -524,11 +526,11 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
             return this.thrown;
         }
 
-        public List<? extends VariableTree> getLHS() {
+        public JCPropagateMethod getLHS() {
             return this.lhs;
         }
 
-        public List<? extends VariableTree> getRHS() {
+        public JCPropagateMethod getRHS() {
             return this.rhs;
         }
 
@@ -549,6 +551,50 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
 
         public Kind getKind() { return Kind.PROPAGATE; }
 
+    }
+
+    public static class JCPropagateMethod extends JCTree implements PropagateMethodTree {
+
+        public JCExpression clazz;
+        public Name name;
+        public List<JCVariableDecl> params;
+
+        protected JCPropagateMethod(JCExpression clazz,
+                                    Name name,
+                                    List<JCVariableDecl> params) {
+            this.clazz = clazz;
+            this.name = name;
+            this.params = params;
+        }
+
+        public JCExpression getClassName() {
+            return this.clazz;
+        }
+
+        public Name getMethodName() {
+            return this.name;
+        }
+
+        public List<JCVariableDecl> getParams() {
+            return this.params;
+        }
+
+        @Override
+        public int getTag() {
+            return PROPAGATE_METHOD;
+        }
+
+        @Override
+        public void accept(Visitor v) {
+            v.visitPropagateMethod(this);
+        }
+
+        @Override
+        public <R, D> R accept(TreeVisitor<R, D> v, D d) {
+            return v.visitPropagateMethod(this, d);
+        }
+
+        public Kind getKind() { return Kind.PROPAGATE_METHOD; }
     }
 
     /**
@@ -2240,6 +2286,8 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
     public static abstract class Visitor {
         public void visitTopLevel(JCCompilationUnit that)    { visitTree(that); }
         public void visitPropagate(JCPropagate that)         { visitTree(that); }
+        public void visitPropagateMethod(JCPropagateMethod that)
+                                                             { visitTree(that); }
         public void visitImport(JCImport that)               { visitTree(that); }
         public void visitClassDef(JCClassDecl that)          { visitTree(that); }
         public void visitMethodDef(JCMethodDecl that)        { visitTree(that); }

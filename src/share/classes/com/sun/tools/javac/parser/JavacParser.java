@@ -2332,11 +2332,11 @@ public class JavacParser implements Parser {
 
         accept(COLON);
 
-        List<JCVariableDecl> lhs = propagateMethod();
+        JCPropagateMethod lhs = propagateMethod();
 
         accept(RIGHT_ARROW);
 
-        List<JCVariableDecl>  rhs = propagateMethod();
+        JCPropagateMethod  rhs = propagateMethod();
 
         accept(SEMI);
         return toP(F.at(S.pos()).Propagate(thrown, lhs, rhs));
@@ -2344,11 +2344,12 @@ public class JavacParser implements Parser {
     /**
      * PropagateMethod = Ident "." Ident FormalParameters
      */
-    List<JCVariableDecl> propagateMethod() {
-        accept(IDENTIFIER);
-        accept(DOT);
-        accept(IDENTIFIER);
-        return formalParameters();
+    JCPropagateMethod propagateMethod() {
+        JCExpression clazz = parseType();
+        accept(DOUBLE_COLON);
+        Name method = ident();
+        List<JCVariableDecl> params = formalParameters();
+        return toP(F.at(S.pos()).PropagateMethod(clazz,method,params));
     }
 
     /** ClassOrInterfaceOrEnumDeclaration = ModifiersOpt
