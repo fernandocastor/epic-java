@@ -540,8 +540,13 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
     }
 
     public void visitPropagateMethod(JCPropagateMethod tree ) {
-        //load symbol for the type
+        //load symbol for the class
         attr.attribType(tree.clazz, env);
+
+        //load symbol for the parameters
+        for (JCVariableDecl v: tree.params) {
+            memberEnter(v, env);
+        }
     }
 
     // process the non-static imports and the static imports of types.
