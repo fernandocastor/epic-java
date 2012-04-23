@@ -557,6 +557,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
 
         public JCFieldAccess selector;
         public List<JCVariableDecl> params;
+        public Symbol sym;
 
         protected JCPropagateMethod(JCExpression clazz,
                                     Name name,

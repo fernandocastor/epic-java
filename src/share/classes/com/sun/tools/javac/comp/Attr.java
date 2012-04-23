@@ -723,9 +723,8 @@ public class Attr extends JCTree.Visitor {
 
         Name name = tree.selector.name;
         DiagnosticPosition pos = tree.pos();
-        rs.resolveQualifiedMethod(pos, env, site.tsym, site, name,
-                tree.getArgTypes(), pt.getTypeArguments(), false);
-
+        tree.sym = rs.resolveQualifiedMethod(pos, env, site.tsym, site, name,
+                    tree.getArgTypes(), pt.getTypeArguments(), false);
     }
 
     public void visitMethodDef(JCMethodDecl tree) {
