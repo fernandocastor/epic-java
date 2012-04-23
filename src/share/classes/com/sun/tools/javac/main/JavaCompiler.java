@@ -35,6 +35,7 @@ import java.util.MissingResourceException;
 import java.util.Queue;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.ArrayList;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -252,6 +253,9 @@ public class JavaCompiler implements ClassReader.SourceCompleter {
      */
     protected Attr attr;
 
+    protected PropagateFlow pflow;
+
+
     /** The attributor.
      */
     protected Check chk;
@@ -348,6 +352,7 @@ public class JavaCompiler implements ClassReader.SourceCompleter {
         }
         source = Source.instance(context);
         attr = Attr.instance(context);
+        pflow = PropagateFlow.instance(context);
         chk = Check.instance(context);
         gen = Gen.instance(context);
         flow = Flow.instance(context);
@@ -868,8 +873,21 @@ public class JavaCompiler implements ClassReader.SourceCompleter {
                 break;
 
             case BY_TODO:
-                while (!todo.isEmpty())
-                    generate(desugar(flow(attribute(todo.remove()))));
+                ArrayList<Env<AttrContext>> envs =
+                        new ArrayList<Env<AttrContext>>();
+                while (!todo.isEmpty()) {
+                    Env<AttrContext> e = attribute(todo.remove());
+                    envs.add(e);
+                    //dont desugar/generate right now:
+                    //type and sym objects are lost from the tree
+                    //after those stages.
+                }
+                pflow.analysePropagate(envs);
+                for (Env<AttrContext> e : envs) {
+                    if(e.tree.getTag() != JCTree.PROPAGATE) {
+                        generate(desugar(flow(e)));
+                    }
+                }
                 break;
 
             default:
