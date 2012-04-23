@@ -311,4 +311,14 @@ public class TreeScanner extends Visitor {
     public void visitTree(JCTree tree) {
         Assert.error();
     }
+
+    public void visitPropagateMethod(JCPropagateMethod that) {
+        //that.
+    }
+
+    public void visitPropagate(JCPropagate that) {
+        scan(that.lhs);
+        scan(that.rhs);
+        scan(that.thrown);
+    }
 }

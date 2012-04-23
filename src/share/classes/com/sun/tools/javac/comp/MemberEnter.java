@@ -530,7 +530,7 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
     public void visitPropagate(JCPropagate tree) {
         //add env to TODO so we check exception class hierarchy
         //in Attr.java visitPropagate()
-        todo.append(env);
+        todo.append(env.dup(tree));
 
         //load symbol for the thrown type
         /*Type exc = */attr.attribType(tree.thrown, env);

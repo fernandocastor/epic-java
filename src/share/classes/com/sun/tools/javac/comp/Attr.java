@@ -3092,6 +3092,8 @@ public class Attr extends JCTree.Visitor {
     public void attrib(Env<AttrContext> env) {
         if (env.tree.getTag() == JCTree.TOPLEVEL)
             attribTopLevel(env);
+        else if (env.tree.getTag() == JCTree.PROPAGATE)
+            attribExpr(env.tree, env);
         else
             attribClass(env.tree.pos(), env.enclClass.sym);
     }
@@ -3107,10 +3109,6 @@ public class Attr extends JCTree.Visitor {
             chk.validateAnnotations(toplevel.packageAnnotations, toplevel.packge);
         } catch (CompletionFailure ex) {
             chk.completionError(toplevel.pos(), ex);
-        }
-
-        for (JCTree tree: toplevel.getPropagates()) {
-            attribExpr(tree, env);
         }
     }
 
