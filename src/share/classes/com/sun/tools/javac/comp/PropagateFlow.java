@@ -179,8 +179,10 @@ public class PropagateFlow extends TreeScanner {
     public void visitApply(JCTree.JCMethodInvocation m) {
         JCTree.JCMethodDecl found = lookupMethod(m);
         if (found == null) {
-            //the 'm' method is not in any sources being
-            //compiled.
+            //Or:
+            //  -the 'm' method is not in any sources being
+            //   compiled.
+            //  -the 'm' method is inherited.
             //lets do nothing.
         } else if (checkRecursion(found, currentTree.node)) {
             //we already went that way...
@@ -207,18 +209,31 @@ public class PropagateFlow extends TreeScanner {
         }
     }
 
-    JCTree.JCMethodDecl lookupMethod(JCTree.JCMethodInvocation m) {
+    JCTree.JCClassDecl getClassForType(Type t) {
         for(Env<AttrContext> e : envs) {
-            JCTree.JCFieldAccess f = (JCTree.JCFieldAccess) m.meth;
-            if (f.selected.type == e.tree.type) {
-                JCTree.JCClassDecl clazz = (JCTree.JCClassDecl) e.tree;
-                for (JCTree def : clazz.defs) {
-                    if (def.getTag() == JCTree.METHODDEF) {
-                        JCTree.JCMethodDecl method = (JCTree.JCMethodDecl) def;
-                        if (method.sym == f.sym) {
-                            return method;
-                        }
-                    }
+             if (t == e.tree.type) {
+                    return (JCTree.JCClassDecl) e.tree;
+             }
+        }
+        return null;
+    }
+
+    JCTree.JCMethodDecl lookupMethod(JCTree.JCMethodInvocation m) {
+        JCTree.JCFieldAccess f = (JCTree.JCFieldAccess) m.meth;
+        JCTree.JCClassDecl clazz = getClassForType(f.selected.type);
+
+        if (clazz == null) return null;
+
+        JCTree.JCMethodDecl method = getOwnMethod(clazz, f.sym);
+        return method;
+    }
+
+    JCTree.JCMethodDecl getOwnMethod(JCTree.JCClassDecl clazz, Symbol sym) {
+        for (JCTree def : clazz.defs) {
+            if (def.getTag() == JCTree.METHODDEF) {
+                JCTree.JCMethodDecl method = (JCTree.JCMethodDecl) def;
+                if (method.sym == sym) {
+                    return method;
                 }
             }
         }
@@ -226,20 +241,11 @@ public class PropagateFlow extends TreeScanner {
     }
 
     JCTree.JCMethodDecl lookupMethod(JCTree.JCPropagateMethod m) {
-        for(Env<AttrContext> e : envs) {
-            if (m.selector.selected.type == e.tree.type) {
-                //this is the class of the method
-                JCTree.JCClassDecl clazz = (JCTree.JCClassDecl) e.tree;
-                for (JCTree def : clazz.defs) {
-                    if (def.getTag() == JCTree.METHODDEF) {
-                        JCTree.JCMethodDecl method = (JCTree.JCMethodDecl) def;
-                        if (method.sym == m.sym) {
-                            return method;
-                        }
-                    }
-                }
-            }
-        }
-        return null;
+        JCTree.JCClassDecl clazz = getClassForType(m.selector.selected.type);
+
+        if (clazz == null) return null;
+
+        JCTree.JCMethodDecl method = getOwnMethod(clazz, m.sym);
+        return method;
     }
 }
