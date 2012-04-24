@@ -124,6 +124,12 @@ public class PropagateFlow extends TreeScanner {
         JCTree.JCMethodDecl rhsm = lookupMethod(p.rhs);
         JCTree.JCMethodDecl lhsm = lookupMethod(p.lhs);
 
+        if (rhsm == null || lhsm == null) {
+            //probably there was a semantic error
+            //and lhs or rhs are not bound to any methods
+            //bail
+            return;
+        }
         this.currentTree = new PathTree(rhsm, p.thrown);
 
         this.currentTarget = lhsm;
