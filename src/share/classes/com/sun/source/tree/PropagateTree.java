@@ -10,6 +10,5 @@ import java.util.List;
  */
 public interface PropagateTree extends ExpressionTree {
     ExpressionTree getThrows();
-    PropagateMethodTree getLHS();
-    PropagateMethodTree getRHS();
+    List<? extends PropagateMethodTree> getNodes();
 }

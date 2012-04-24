@@ -535,8 +535,9 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         //load symbol for the thrown type
         /*Type exc = */attr.attribType(tree.thrown, env);
 
-        tree.lhs.accept(this);
-        tree.rhs.accept(this);
+        for (JCPropagateMethod m : tree.nodes) {
+            m.accept(this);
+        }
     }
 
     public void visitPropagateMethod(JCPropagateMethod tree ) {

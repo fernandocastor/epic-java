@@ -145,9 +145,8 @@ public class TreeMaker implements JCTree.Factory {
     }
 
     public JCPropagate Propagate(JCExpression thrown,
-                                JCPropagateMethod lhs,
-                                JCPropagateMethod rhs) {
-        JCPropagate tree = new JCPropagate(thrown, lhs, rhs);
+                                List<JCPropagateMethod> nodes) {
+        JCPropagate tree = new JCPropagate(thrown, nodes);
         tree.pos = pos;
         return tree;
     }

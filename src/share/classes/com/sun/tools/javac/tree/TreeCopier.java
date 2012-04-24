@@ -326,9 +326,9 @@ public class TreeCopier<P> implements TreeVisitor<JCTree,P> {
     public JCTree visitPropagate(PropagateTree node, P p) {
         JCPropagate prop = (JCPropagate) node;
         JCExpression thrown = copy(prop.thrown, p);
-        JCPropagateMethod lhs = copy(prop.lhs, p);
-        JCPropagateMethod rhs = copy(prop.rhs, p);
-        return M.at(prop.pos).Propagate(thrown, lhs, rhs);
+
+        List<JCPropagateMethod> nodes = copy(prop.nodes, p);
+        return M.at(prop.pos).Propagate(thrown, nodes);
     }
 
     public JCTree visitPropagateMethod(PropagateMethodTree node, P p) {

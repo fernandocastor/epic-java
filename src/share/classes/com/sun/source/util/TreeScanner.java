@@ -123,8 +123,7 @@ public class TreeScanner<R,P> implements TreeVisitor<R,P> {
 
     public R visitPropagate(PropagateTree node, P p) {
         R r = scan(node.getThrows(), p);
-        r = scanAndReduce(node.getLHS(), p, r);
-        r = scanAndReduce(node.getRHS(), p, r);
+        r = scanAndReduce(node.getNodes(), p, r);
         return r;
     }
 

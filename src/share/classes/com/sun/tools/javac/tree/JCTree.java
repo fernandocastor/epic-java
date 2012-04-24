@@ -512,26 +512,20 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
 
     public static class JCPropagate extends JCTree implements PropagateTree {
         public JCExpression thrown;
-        public JCPropagateMethod lhs;
-        public JCPropagateMethod rhs;
+        public List<JCPropagateMethod> nodes;
+
         protected JCPropagate(JCExpression thrown,
-                              JCPropagateMethod lhs,
-                              JCPropagateMethod rhs) {
+                              List<JCPropagateMethod> nodes) {
+            this.nodes = nodes;
             this.thrown = thrown;
-            this.lhs = lhs;
-            this.rhs = rhs;
         }
 
         public JCExpression getThrows() {
             return this.thrown;
         }
 
-        public JCPropagateMethod getLHS() {
-            return this.lhs;
-        }
-
-        public JCPropagateMethod getRHS() {
-            return this.rhs;
+        public List<? extends PropagateMethodTree> getNodes() {
+            return this.nodes;
         }
 
         @Override

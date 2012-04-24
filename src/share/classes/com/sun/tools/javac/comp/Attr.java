@@ -700,8 +700,9 @@ public class Attr extends JCTree.Visitor {
         JCExpression t = tree.getThrows();
         chk.checkType(t.pos(), t.type, syms.throwableType);
 
-        tree.lhs.accept(this);
-        tree.rhs.accept(this);
+        for (JCPropagateMethod m : tree.nodes) {
+            m.accept(this);
+        }
     }
 
     public void visitPropagateMethod(JCPropagateMethod tree) {

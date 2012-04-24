@@ -317,8 +317,7 @@ public class TreeScanner extends Visitor {
     }
 
     public void visitPropagate(JCPropagate that) {
-        scan(that.lhs);
-        scan(that.rhs);
+        scan(that.nodes);
         scan(that.thrown);
     }
 }

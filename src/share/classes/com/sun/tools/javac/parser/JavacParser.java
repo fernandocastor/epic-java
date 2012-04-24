@@ -2322,24 +2322,28 @@ public class JavacParser implements Parser {
      *   -Eventually, make it work with generics
      */
 
-    /** propagateDeclaration = { PROPAGATE Ident ":" PropagateMethod "->" PropagateMethod ";" }
+    /** propagateDeclaration = PROPAGATE Ident ":"
+     *                         {PropagateMethod "->"}+ PropagateMethod ";"
      */
     JCTree propagateDeclaration() {
         S.nextToken(); //consume 'propagate'
 
-        //Name thrown = ident();
+        ListBuffer<JCPropagateMethod> nodes = new ListBuffer<JCPropagateMethod>();
+
         JCExpression thrown = parseType();
 
         accept(COLON);
 
-        JCPropagateMethod lhs = propagateMethod();
+        nodes.append(propagateMethod());
 
-        accept(RIGHT_ARROW);
+        while (S.token() == RIGHT_ARROW) {
+            S.nextToken();
+            nodes.append(propagateMethod());
+        }
 
-        JCPropagateMethod  rhs = propagateMethod();
-
+        JCTree ret = toP(F.at(S.pos()).Propagate(thrown, nodes.toList()));
         accept(SEMI);
-        return toP(F.at(S.pos()).Propagate(thrown, lhs, rhs));
+        return ret;
     }
     /**
      * PropagateMethod = Ident "." Ident FormalParameters

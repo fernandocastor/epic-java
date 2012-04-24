@@ -117,22 +117,39 @@ public class PropagateFlow extends TreeScanner {
         void setupThrowPath() {
             this.atLeastOnePathFound = true;
             this.node.setupThrows(thrown);
+
+            System.out.println(this.pathAsString(this.node));
+        }
+
+        String pathAsString(PathNode n) {
+            if (n.parent != null) {
+                return pathAsString(n.parent) + " -> " + n.self.name;
+            }
+            return n.self.name.toString();
         }
     }
 
     public void process(JCTree.JCPropagate p) {
-        JCTree.JCMethodDecl rhsm = lookupMethod(p.rhs);
-        JCTree.JCMethodDecl lhsm = lookupMethod(p.lhs);
+        this.targets = new ArrayList<JCTree.JCMethodDecl>();
 
-        if (rhsm == null || lhsm == null) {
-            //probably there was a semantic error
-            //and lhs or rhs are not bound to any methods
-            //bail
-            return;
+        for(JCTree.JCPropagateMethod m : p.nodes) {
+            JCTree.JCMethodDecl method = lookupMethod(m);
+
+            if (method == null) {
+                //probably there was a semantic error
+                //and m is not bound to any method. So, bail!
+                return;
+            } else {
+                targets.add(method);
+            }
         }
-        this.currentTree = new PathTree(rhsm, p.thrown);
 
-        this.currentTarget = lhsm;
+        //popping...
+        JCTree.JCMethodDecl rhs = targets.remove(targets.size()-1);
+        this.currentTarget = targets.remove(targets.size()-1);
+
+        this.currentTree = new PathTree(rhs, p.thrown);
+
         buildpath(this.currentTree.node);
 
         if (!this.currentTree.atLeastOnePathFound) {
@@ -142,7 +159,9 @@ public class PropagateFlow extends TreeScanner {
     }
 
     private PathTree currentTree;
+    private ArrayList<JCTree.JCMethodDecl> targets;
     private JCTree.JCMethodDecl currentTarget;
+
     void buildpath(PathNode node) {
         scan(node.self.body);
     }
@@ -167,8 +186,19 @@ public class PropagateFlow extends TreeScanner {
             //we already went that way...
             //lets do nothing
         } else if (found.sym == this.currentTarget.sym) {
-            currentTree.setRoot(found);
-            currentTree.setupThrowPath();
+            if (targets.isEmpty()) {
+                currentTree.setRoot(found);
+                currentTree.setupThrowPath();
+            } else {
+                JCTree.JCMethodDecl bkTarget = this.currentTarget;
+                this.currentTarget = targets.remove(targets.size()-1);
+                PathNode bk = currentTree.node;
+                currentTree.setRoot(found);
+                buildpath(currentTree.node);
+                targets.add(this.currentTarget);
+                this.currentTarget = bkTarget;
+                currentTree.node = bk;
+            }
         } else {
             PathNode bk = currentTree.node;
             currentTree.setRoot(found);
