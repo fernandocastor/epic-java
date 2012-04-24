@@ -2352,8 +2352,43 @@ public class JavacParser implements Parser {
         JCExpression clazz = parseType();
         accept(DOUBLE_COLON);
         Name method = ident();
-        List<JCVariableDecl> params = formalParameters();
+        List<JCVariableDecl> params = propagateSignatureParameters();
         return toP(F.at(S.pos()).PropagateMethod(clazz,method,params));
+    }
+
+    List<JCVariableDecl> propagateSignatureParameters() {
+        ListBuffer<JCVariableDecl> params = new ListBuffer<JCVariableDecl>();
+        JCVariableDecl lastParam = null;
+        accept(LPAREN);
+        if (S.token() != RPAREN) {
+            params.append(lastParam = propagateSignatureParameter());
+            while ((lastParam.mods.flags & Flags.VARARGS) == 0 && S.token() == COMMA) {
+                S.nextToken();
+                params.append(lastParam = propagateSignatureParameter());
+            }
+        }
+        accept(RPAREN);
+        return params.toList();
+    }
+
+    JCVariableDecl propagateSignatureParameter() {
+        JCModifiers mods = optFinal(Flags.PARAMETER);
+        JCExpression type = parseType();
+        if (S.token() == ELLIPSIS) {
+            checkVarargs();
+            mods.flags |= Flags.VARARGS;
+            type = to(F.at(S.pos()).TypeArray(type));
+            S.nextToken();
+        }
+        int pos = S.pos();
+
+        Name name = S.name();
+        if ((mods.flags & Flags.VARARGS) != 0 &&
+                S.token() == LBRACKET) {
+            log.error(S.pos(), "varargs.and.old.array.syntax");
+        }
+        type = bracketsOpt(type);
+        return toP(F.at(pos).VarDef(mods, name, type, null));
     }
 
     /** ClassOrInterfaceOrEnumDeclaration = ModifiersOpt
