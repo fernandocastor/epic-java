@@ -1,5 +1,6 @@
 package com.sun.tools.javac.comp;
 
+import com.sun.tools.javac.code.Kinds;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.tree.JCTree;
@@ -213,10 +214,22 @@ public class PropagateFlow extends TreeScanner {
     }
 
     JCTree.JCClassDecl getClassForType(Type t) {
-        for(Env<AttrContext> e : envs) {
-             if (t == e.tree.type) {
-                    return (JCTree.JCClassDecl) e.tree;
-             }
+        if (t.tsym.owner.kind == Kinds.PCK) {
+            for(Env<AttrContext> e : envs) {
+                 if (t == e.tree.type) {
+                        return (JCTree.JCClassDecl) e.tree;
+                 }
+            }
+        } else if (t.tsym.owner.kind == Kinds.TYP) {
+            JCTree.JCClassDecl outter = getClassForType(t.tsym.owner.type);
+            for(JCTree def : outter.defs) {
+                if (def.getTag() == JCTree.CLASSDEF) {
+                    JCTree.JCClassDecl clazz = (JCTree.JCClassDecl) def;
+                    if (t == def.type) {
+                        return clazz;
+                    }
+                }
+            }
         }
         return null;
     }
