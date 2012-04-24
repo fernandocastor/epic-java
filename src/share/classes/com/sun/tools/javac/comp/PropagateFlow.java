@@ -23,7 +23,7 @@ public class PropagateFlow extends TreeScanner {
 
     Env<AttrContext> env;
     //private final Names names;
-    //private final Log log;
+    private final Log log;
     //private final Symtab syms;
     //private final Types types;
     //private final Check chk;
@@ -36,6 +36,7 @@ public class PropagateFlow extends TreeScanner {
     public PropagateFlow(Context context) {
         //...and this thing.
         //context.put(pflowKey, this);
+        log = Log.instance(context);
     }
 
     private ArrayList<Env<AttrContext>> envs;
@@ -59,6 +60,7 @@ public class PropagateFlow extends TreeScanner {
             if (e.tree.getTag() == JCTree.PROPAGATE) {
                 try {
                     JCTree.JCPropagate p = (JCTree.JCPropagate)e.tree;
+                    log.useSource(e.toplevel.sourcefile);
                     process(p);
                 } catch(Exception ex) {
                     ex.printStackTrace();
@@ -101,10 +103,11 @@ public class PropagateFlow extends TreeScanner {
     class PathTree {
         public PathNode node = null;
         public JCTree.JCExpression thrown;
-
+        public boolean atLeastOnePathFound;
         PathTree(JCTree.JCMethodDecl m, JCTree.JCExpression thr) {
             setRoot(m);
             this.thrown = thr;
+            this.atLeastOnePathFound = false;
         }
 
         void setRoot(JCTree.JCMethodDecl m) {
@@ -112,6 +115,7 @@ public class PropagateFlow extends TreeScanner {
         }
 
         void setupThrowPath() {
+            this.atLeastOnePathFound = true;
             this.node.setupThrows(thrown);
         }
     }
@@ -124,6 +128,11 @@ public class PropagateFlow extends TreeScanner {
 
         this.currentTarget = lhsm;
         buildpath(this.currentTree.node);
+
+        if (!this.currentTree.atLeastOnePathFound) {
+            log.error(p.pos(),
+                        "propagate.no.callgraph");
+        }
     }
 
     private PathTree currentTree;
