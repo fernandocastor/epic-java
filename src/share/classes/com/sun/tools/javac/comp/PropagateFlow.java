@@ -123,9 +123,12 @@ public class PropagateFlow extends TreeScanner {
 
         String pathAsString(PathNode n) {
             if (n.parent != null) {
-                return pathAsString(n.parent) + " -> " + n.self.name;
+                return pathAsString(n.parent) + " -> "
+                        + n.self.sym.owner.name + "::" + n.self.name
+                        + "(" + n.self.params.toString(",") + ")";
             }
-            return n.self.name.toString();
+            return n.self.sym.owner.name + "::" + n.self.name
+                    + "(" + n.self.params.toString(",") + ")";
         }
     }
 
