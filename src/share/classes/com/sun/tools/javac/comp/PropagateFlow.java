@@ -183,10 +183,8 @@ public class PropagateFlow extends TreeScanner {
     public void visitApply(JCTree.JCMethodInvocation m) {
         JCTree.JCMethodDecl found = lookupMethod(m);
         if (found == null) {
-            //Or:
-            //  -the 'm' method is not in any sources being
-            //   compiled.
-            //  -the 'm' method is inherited.
+            //the 'm' method is not in any sources being
+            //compiled.
             //lets do nothing.
         } else if (checkRecursion(found, currentTree.node)) {
             //we already went that way...
@@ -205,12 +203,37 @@ public class PropagateFlow extends TreeScanner {
                 this.currentTarget = bkTarget;
                 currentTree.node = bk;
             }
+        } else if (found.body == null) {
+            //found is abstract
+            System.err.println(" -- Dealing with abstract method! --");
         } else {
             PathNode bk = currentTree.node;
             currentTree.setRoot(found);
             buildpath(currentTree.node);
             currentTree.node = bk;
         }
+    }
+
+    JCTree.JCMethodDecl lookupMethod(JCTree.JCPropagateMethod m) {
+        JCTree.JCClassDecl clazz = getClassForType(m.selector.selected.type);
+
+        if (clazz == null) return null;
+
+        JCTree.JCMethodDecl method = getOwnMethod(clazz, m.sym);
+        return method;
+    }
+
+    JCTree.JCMethodDecl lookupMethod(JCTree.JCMethodInvocation m) {
+        JCTree.JCFieldAccess f = (JCTree.JCFieldAccess) m.meth;
+        JCTree.JCClassDecl clazz = getClassForType(f.selected.type);
+
+        if (clazz == null) return null;
+
+        JCTree.JCMethodDecl method = getOwnMethod(clazz, f.sym);
+        if (method == null) {
+            method = getSuperMethod(clazz, f.sym);
+        }
+        return method;
     }
 
     JCTree.JCClassDecl getClassForType(Type t) {
@@ -234,13 +257,15 @@ public class PropagateFlow extends TreeScanner {
         return null;
     }
 
-    JCTree.JCMethodDecl lookupMethod(JCTree.JCMethodInvocation m) {
-        JCTree.JCFieldAccess f = (JCTree.JCFieldAccess) m.meth;
-        JCTree.JCClassDecl clazz = getClassForType(f.selected.type);
+    JCTree.JCMethodDecl getSuperMethod(JCTree.JCClassDecl subclazz, Symbol sym) {
+        JCTree.JCClassDecl clazz = getClassForType(subclazz.extending.type);
 
         if (clazz == null) return null;
 
-        JCTree.JCMethodDecl method = getOwnMethod(clazz, f.sym);
+        JCTree.JCMethodDecl method = getOwnMethod(clazz, sym);
+        if (method == null) {
+            method = getSuperMethod(clazz, sym);
+        }
         return method;
     }
 
@@ -254,14 +279,5 @@ public class PropagateFlow extends TreeScanner {
             }
         }
         return null;
-    }
-
-    JCTree.JCMethodDecl lookupMethod(JCTree.JCPropagateMethod m) {
-        JCTree.JCClassDecl clazz = getClassForType(m.selector.selected.type);
-
-        if (clazz == null) return null;
-
-        JCTree.JCMethodDecl method = getOwnMethod(clazz, m.sym);
-        return method;
     }
 }
