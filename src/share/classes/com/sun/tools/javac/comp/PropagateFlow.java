@@ -56,7 +56,6 @@ public class PropagateFlow extends TreeScanner {
                  *   paths. When the path reaches the LHS,
                  *   we should set "thrown" attribute for each node.
                  */
-        PathTree paths;
         for(Env<AttrContext> e : envs) {
             if (e.tree.getTag() == JCTree.PROPAGATE) {
                 try {
