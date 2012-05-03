@@ -700,12 +700,38 @@ public class Attr extends JCTree.Visitor {
         JCExpression t = tree.getThrows();
         chk.checkType(t.pos(), t.type, syms.throwableType);
 
-        for (JCPropagateMethod m : tree.nodes) {
+        for (JCTree m : tree.nodes) {
             m.accept(this);
         }
     }
 
-    public void visitPropagateMethod(JCPropagateMethod tree) {
+    public void visitPropagateMethod(JCPropagateMethodPolym tree) {
+        //checking if the method exists...
+        //Given C.m(), we should not care if m is static or instance-specific.
+
+        Env<AttrContext> localEnv = env.dup(tree, env.info.dup());
+        ListBuffer<Type> argtypes = new ListBuffer<Type>();
+        for(JCVariableDecl p: tree.params) {
+            argtypes.add(attribStat(p, localEnv));
+        }
+
+        //Type mpt = newMethTemplate(argtypes.toList(), List.<Type>nil());
+        //Type mtype = attribExpr(tree.selector, localEnv, mpt);
+        int skind = VAL | TYP;
+        //the following will attribute the lhs/rhs classes
+        for (JCExpression e : tree.selectors) {
+            JCFieldAccess s = (JCFieldAccess) e;
+            Type site = attribTree(s.selected, env, skind, Infer.anyPoly);
+
+            Name name = s.name;
+            DiagnosticPosition pos = tree.pos();
+            s.sym = rs.resolveQualifiedMethod(
+                            pos, env, site.tsym, site, name,
+                            tree.getArgTypes(), pt.getTypeArguments(), false);
+        }
+    }
+
+    public void visitPropagateMethod(JCPropagateMethodSimple tree) {
         //checking if the method exists...
         //Given C.m(), we should not care if m is static or instance-specific.
 
@@ -720,11 +746,10 @@ public class Attr extends JCTree.Visitor {
         int skind = VAL | TYP;
         //the following will attribute the lhs/rhs classes
         Type site = attribTree(tree.selector.selected, env, skind, Infer.anyPoly);
-        Symbol sitesym = TreeInfo.symbol(tree.selector.selected);
 
         Name name = tree.selector.name;
         DiagnosticPosition pos = tree.pos();
-        tree.sym = rs.resolveQualifiedMethod(pos, env, site.tsym, site, name,
+        tree.sym = tree.selector.sym = rs.resolveQualifiedMethod(pos, env, site.tsym, site, name,
                     tree.getArgTypes(), pt.getTypeArguments(), false);
     }
 

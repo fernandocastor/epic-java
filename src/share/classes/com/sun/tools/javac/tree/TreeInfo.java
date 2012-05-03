@@ -782,7 +782,8 @@ public class TreeInfo {
         case JCTree.DIV:
         case JCTree.MOD: return mulPrec;
         case JCTree.TYPETEST: return ordPrec;
-        default: throw new AssertionError();
+        default:
+            throw new AssertionError();
         }
     }
 

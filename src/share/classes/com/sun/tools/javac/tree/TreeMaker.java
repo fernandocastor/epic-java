@@ -145,22 +145,41 @@ public class TreeMaker implements JCTree.Factory {
     }
 
     public JCPropagate Propagate(JCExpression thrown,
-                                List<JCPropagateMethod> nodes) {
+                                List<JCTree> nodes) {
         JCPropagate tree = new JCPropagate(thrown, nodes);
         tree.pos = pos;
         return tree;
     }
 
-    public JCPropagateMethod PropagateMethod(JCExpression clazz,
+    public JCPropagateMethodSimple PropagateMethodSimple(JCExpression clazz,
                                              Name name,
                                              List<JCVariableDecl> params) {
-        JCPropagateMethod tree = new JCPropagateMethod(clazz, name, params);
+        JCPropagateMethodSimple tree = new JCPropagateMethodSimple(clazz, name, params);
         tree.pos = pos;
         return tree;
     }
-    public JCPropagateMethod PropagateMethod(JCFieldAccess selec,
+    public JCPropagateMethodSimple PropagateMethodSimple(JCFieldAccess selec,
                                              List<JCVariableDecl> params) {
-        JCPropagateMethod tree = new JCPropagateMethod(selec, params);
+        JCPropagateMethodSimple tree = new JCPropagateMethodSimple(selec, params);
+        tree.pos = pos;
+        return tree;
+    }
+
+    public JCPropagateMethodPolym PropagateMethodPolym(List<JCExpression> subs,
+                                                       JCExpression sup,
+                                                       Name name,
+                                                       List<JCVariableDecl> params) {
+        JCPropagateMethodPolym tree = new JCPropagateMethodPolym(subs, sup, name, params);
+        tree.pos = pos;
+        return tree;
+    }
+
+
+    public JCPropagateMethodPolym PropagateMethodPolym(List<JCExpression> subs,
+                                         JCExpression sup,
+                                         List<? extends JCExpression> selec,
+                                         List<JCVariableDecl> params) {
+        JCPropagateMethodPolym tree = new JCPropagateMethodPolym(subs, sup, selec, params);
         tree.pos = pos;
         return tree;
     }

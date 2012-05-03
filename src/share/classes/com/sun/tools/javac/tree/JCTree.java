@@ -94,11 +94,13 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
 
     public static final int PROPAGATE = CLASSDEF+1;
 
-    public static final int PROPAGATE_METHOD = PROPAGATE+1;
+    public static final int PROPAGATE_METHOD_SIMPLE = PROPAGATE+1;
+
+    public static final int PROPAGATE_METHOD_POLYM = PROPAGATE_METHOD_SIMPLE+1;
 
     /** Method definitions, of type MethodDef.
      */
-    public static final int METHODDEF = PROPAGATE_METHOD + 1;
+    public static final int METHODDEF = PROPAGATE_METHOD_POLYM + 1;
 
     /** Variable definitions, of type VarDef.
      */
@@ -512,10 +514,10 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
 
     public static class JCPropagate extends JCTree implements PropagateTree {
         public JCExpression thrown;
-        public List<JCPropagateMethod> nodes;
+        public List<JCTree> nodes;
 
         protected JCPropagate(JCExpression thrown,
-                              List<JCPropagateMethod> nodes) {
+                              List<JCTree> nodes) {
             this.nodes = nodes;
             this.thrown = thrown;
         }
@@ -524,7 +526,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
             return this.thrown;
         }
 
-        public List<? extends PropagateMethodTree> getNodes() {
+        public List<? extends Tree> getNodes() {
             return this.nodes;
         }
 
@@ -547,22 +549,23 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
 
     }
 
-    public static class JCPropagateMethod extends JCTree implements PropagateMethodTree {
+    public static class JCPropagateMethodSimple extends JCTree implements PropagateMethodSimpleTree {
 
         public JCFieldAccess selector;
         public List<JCVariableDecl> params;
         public Symbol sym;
 
-        protected JCPropagateMethod(JCExpression clazz,
-                                    Name name,
-                                    List<JCVariableDecl> params) {
+        protected JCPropagateMethodSimple(JCExpression clazz,
+                                          Name name,
+                                          List<JCVariableDecl> params) {
             this.selector = new JCFieldAccess(clazz, name, null);
             //maybe not really clazz.pos, but better then left it zero'd
             this.selector.pos = clazz.pos;
             this.params = params;
         }
-        protected JCPropagateMethod(JCFieldAccess selec,
-                                    List<JCVariableDecl> params) {
+
+        protected JCPropagateMethodSimple(JCFieldAccess selec,
+                                          List<JCVariableDecl> params) {
             this.selector = selec;
             this.params = params;
         }
@@ -584,7 +587,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         }
         @Override
         public int getTag() {
-            return PROPAGATE_METHOD;
+            return PROPAGATE_METHOD_SIMPLE;
         }
 
         @Override
@@ -597,8 +600,90 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
             return v.visitPropagateMethod(this, d);
         }
 
-        public Kind getKind() { return Kind.PROPAGATE_METHOD; }
+        public Kind getKind() { return Kind.PROPAGATE_METHOD_SIMPLE; }
     }
+
+    public static class JCPropagateMethodPolym extends JCTree implements PropagateMethodPolymTree {
+
+        public List<JCExpression> subs;
+        public JCExpression sup;
+        public List<? extends JCExpression> selectors;
+        public List<JCVariableDecl> params;
+
+        protected JCPropagateMethodPolym(List<JCExpression> subs,
+                                         JCExpression sup,
+                                         Name name,
+                                         List<JCVariableDecl> params) {
+            // loading selectors...
+            ListBuffer<JCExpression> selectors = new ListBuffer<JCExpression>();
+            JCFieldAccess tmp = new JCFieldAccess(sup, name, null);
+            //maybe not really clazz.pos, but better then left it zero'd
+            tmp.pos = sup.pos;
+            selectors.append(tmp);
+            for (JCExpression e : subs) {
+                tmp = new JCFieldAccess(e, name, null);
+                tmp.pos = e.pos;
+                selectors.append(tmp);
+            }
+            this.selectors = selectors.toList();
+            this.subs = subs;
+            this.sup = sup;
+            this.params = params;
+        }
+
+        protected JCPropagateMethodPolym(List<JCExpression> subs,
+                                         JCExpression sup,
+                                         List<? extends JCExpression> selec,
+                                         List<JCVariableDecl> params) {
+            this.subs = subs;
+            this.sup = sup;
+            this.selectors = selec;
+            this.params = params;
+        }
+
+
+        public List<? extends ExpressionTree> getSubs() {
+            return subs;
+        }
+
+        public ExpressionTree getSup() {
+            return sup;
+        }
+
+        public List<? extends ExpressionTree> getSelectors() {
+            return this.selectors;
+        }
+
+        public List<JCVariableDecl> getParams() {
+            return this.params;
+        }
+
+        public List<Type> getArgTypes() {
+            ListBuffer<Type> lst = new ListBuffer<Type>();
+            for (JCVariableDecl v : this.params) {
+                lst.add(v.type);
+            }
+            return lst.toList();
+        }
+
+        @Override
+        public int getTag() {
+            return PROPAGATE_METHOD_POLYM;
+        }
+
+        @Override
+        public void accept(Visitor v) {
+            v.visitPropagateMethod(this);
+        }
+
+        @Override
+        public <R, D> R accept(TreeVisitor<R, D> v, D d) {
+            return v.visitPropagateMethod(this, d);
+        }
+
+        public Kind getKind() { return Kind.PROPAGATE_METHOD_POLYM; }
+    }
+
 
     /**
      * An import clause.
@@ -2289,7 +2374,9 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
     public static abstract class Visitor {
         public void visitTopLevel(JCCompilationUnit that)    { visitTree(that); }
         public void visitPropagate(JCPropagate that)         { visitTree(that); }
-        public void visitPropagateMethod(JCPropagateMethod that)
+        public void visitPropagateMethod(JCPropagateMethodSimple that)
+                                                             { visitTree(that); }
+        public void visitPropagateMethod(JCPropagateMethodPolym that)
                                                              { visitTree(that); }
         public void visitImport(JCImport that)               { visitTree(that); }
         public void visitClassDef(JCClassDecl that)          { visitTree(that); }

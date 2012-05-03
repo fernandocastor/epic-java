@@ -535,18 +535,23 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         //load symbol for the thrown type
         /*Type exc = */attr.attribType(tree.thrown, env);
 
-        for (JCPropagateMethod m : tree.nodes) {
+        for (JCTree m : tree.nodes) {
             m.accept(this);
         }
     }
 
-    public void visitPropagateMethod(JCPropagateMethod tree ) {
+    public void visitPropagateMethod(JCPropagateMethodPolym tree ) {
+        memberEnter(tree.sup, env);
+        memberEnter(tree.subs, env);
+        memberEnter(tree.selectors, env);
+        memberEnter(tree.params, env);
+    }
+
+    public void visitPropagateMethod(JCPropagateMethodSimple tree ) {
         //load symbol for the selector
         memberEnter(tree.selector, env);
         //load symbol for the parameters
-        for (JCVariableDecl v: tree.params) {
-            memberEnter(v, env);
-        }
+        memberEnter(tree.params, env);
     }
 
     // process the non-static imports and the static imports of types.

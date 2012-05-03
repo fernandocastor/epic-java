@@ -2328,7 +2328,7 @@ public class JavacParser implements Parser {
     JCTree propagateDeclaration() {
         S.nextToken(); //consume 'propagate'
 
-        ListBuffer<JCPropagateMethod> nodes = new ListBuffer<JCPropagateMethod>();
+        ListBuffer<JCTree> nodes = new ListBuffer<JCTree>();
 
         JCExpression thrown = parseType();
 
@@ -2346,14 +2346,35 @@ public class JavacParser implements Parser {
         return ret;
     }
     /**
-     * PropagateMethod = Ident "." Ident FormalParameters
+     * PropagateMethod = Type "::" Ident FormalParameters
+     *                  | {Type [',' Type]+ "<:" Type}
+     *                      "::" Ident FormalParameters
      */
-    JCPropagateMethod propagateMethod() {
-        JCExpression clazz = parseType();
-        accept(DOUBLE_COLON);
-        Name method = ident();
-        List<JCVariableDecl> params = propagateSignatureParameters();
-        return toP(F.at(S.pos()).PropagateMethod(clazz,method,params));
+    JCTree propagateMethod() {
+        if (S.token() == LBRACE) {
+            accept(LBRACE);
+            ListBuffer<JCExpression> subs = new ListBuffer<JCExpression>();
+            subs.append(parseType());
+            while (S.token() == COMMA) {
+                accept(COMMA);
+                subs.append(parseType());
+            }
+            accept(EXTENDS_SYM);
+            JCExpression sup= parseType();
+            accept(RBRACE);
+            accept(DOUBLE_COLON);
+            Name method = ident();
+            List<JCVariableDecl> params = propagateSignatureParameters();
+
+            return toP(F.at(S.pos()).PropagateMethodPolym(
+                    subs.toList(),sup,method,params));
+        } else {
+            JCExpression clazz = parseType();
+            accept(DOUBLE_COLON);
+            Name method = ident();
+            List<JCVariableDecl> params = propagateSignatureParameters();
+            return toP(F.at(S.pos()).PropagateMethodSimple(clazz,method,params));
+        }
     }
 
     List<JCVariableDecl> propagateSignatureParameters() {

@@ -312,7 +312,11 @@ public class TreeScanner extends Visitor {
         Assert.error();
     }
 
-    public void visitPropagateMethod(JCPropagateMethod that) {
+    public void visitPropagateMethod(JCPropagateMethodSimple that) {
+        //that.
+    }
+
+    public void visitPropagateMethod(JCPropagateMethodPolym that) {
         //that.
     }
 

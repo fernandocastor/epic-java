@@ -67,7 +67,10 @@ public class SimpleTreeVisitor <R,P> implements TreeVisitor<R,P> {
     public R visitPropagate(PropagateTree node, P p) {
         return defaultAction(node, p);
     }
-    public R visitPropagateMethod(PropagateMethodTree node, P p) {
+    public R visitPropagateMethod(PropagateMethodSimpleTree node, P p) {
+        return defaultAction(node, p);
+    }
+    public R visitPropagateMethod(PropagateMethodPolymTree node, P p) {
         return defaultAction(node, p);
     }
 

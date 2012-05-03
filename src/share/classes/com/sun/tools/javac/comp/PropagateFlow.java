@@ -9,6 +9,7 @@ import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Log;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class PropagateFlow extends TreeScanner {
     //every tree has this thing...
@@ -70,156 +71,38 @@ public class PropagateFlow extends TreeScanner {
         }
     }
 
-    class PathNode {
-        public PathNode parent;
-        public JCTree.JCMethodDecl self;
-
-        public PathNode(JCTree.JCMethodDecl m, PathNode parent) {
-            this.parent = parent;
-            this.self = m;
-        }
-
-        public void setupThrows(JCTree.JCExpression t) {
-            if (!alreadyThrows((JCTree.JCIdent)t)) {
-                this.self.thrown = this.self.thrown.append(t);
-                this.self.type.asMethodType().thrown
-                        = this.self.type.asMethodType().thrown.append(t.type);
-            }
-            if (this.parent != null) {
-                this.parent.setupThrows(t);
-            }
-        }
-
-        public boolean alreadyThrows(JCTree.JCIdent t) {
-            for(JCTree.JCExpression e : self.thrown) {
-                JCTree.JCIdent i = (JCTree.JCIdent) e;
-                if (i.sym == t.sym) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-    class PathTree {
-        public PathNode node = null;
-        public JCTree.JCExpression thrown;
-        public boolean atLeastOnePathFound;
-        PathTree(JCTree.JCMethodDecl m, JCTree.JCExpression thr) {
-            setRoot(m);
-            this.thrown = thr;
-            this.atLeastOnePathFound = false;
-        }
-
-        void setRoot(JCTree.JCMethodDecl m) {
-            this.node = new PathNode(m, this.node);
-        }
-
-        void setupThrowPath() {
-            this.atLeastOnePathFound = true;
-            this.node.setupThrows(thrown);
-
-            System.out.println(this.pathAsString(this.node));
-        }
-
-        String pathAsString(PathNode n) {
-            if (n.parent != null) {
-                return pathAsString(n.parent) + " -> "
-                        + n.self.sym.owner.name + "::" + n.self.name
-                        + "(" + n.self.params.toString(",") + ")";
-            }
-            return n.self.sym.owner.name + "::" + n.self.name
-                    + "(" + n.self.params.toString(",") + ")";
-        }
-    }
-
-    public void process(JCTree.JCPropagate p) {
-        this.targets = new ArrayList<JCTree.JCMethodDecl>();
-
-        for(JCTree.JCPropagateMethod m : p.nodes) {
-            JCTree.JCMethodDecl method = lookupMethod(m);
-
-            if (method == null) {
-                //probably there was a semantic error
-                //and m is not bound to any method. So, bail!
-                return;
-            } else {
-                targets.add(method);
-            }
-        }
-
-        //popping...
-        JCTree.JCMethodDecl rhs = targets.remove(targets.size()-1);
-        this.currentTarget = targets.remove(targets.size()-1);
-
-        this.currentTree = new PathTree(rhs, p.thrown);
-
-        buildpath(this.currentTree.node);
-
-        if (!this.currentTree.atLeastOnePathFound) {
-            log.error(p.pos(),
-                        "propagate.no.callgraph");
-        }
-    }
-
-    private PathTree currentTree;
-    private ArrayList<JCTree.JCMethodDecl> targets;
-    private JCTree.JCMethodDecl currentTarget;
-
-    void buildpath(PathNode node) {
-        scan(node.self.body);
-    }
-
-    public boolean checkRecursion(JCTree.JCMethodDecl m, PathNode node) {
-        if (node == null) {
-            return false;
-        } else if (node.self.type == m.type) {
-            return true;
-        } else {
-            return checkRecursion(m, node.parent);
-        }
-    }
-
-    public void visitApply(JCTree.JCMethodInvocation m) {
-        JCTree.JCMethodDecl found = lookupMethod(m);
-        if (found == null) {
-            //the 'm' method is not in any sources being
-            //compiled.
-            //lets do nothing.
-        } else if (checkRecursion(found, currentTree.node)) {
-            //we already went that way...
-            //lets do nothing
-        } else if (found.sym == this.currentTarget.sym) {
-            if (targets.isEmpty()) {
-                currentTree.setRoot(found);
-                currentTree.setupThrowPath();
-            } else {
-                JCTree.JCMethodDecl bkTarget = this.currentTarget;
-                this.currentTarget = targets.remove(targets.size()-1);
-                PathNode bk = currentTree.node;
-                currentTree.setRoot(found);
-                buildpath(currentTree.node);
-                targets.add(this.currentTarget);
-                this.currentTarget = bkTarget;
-                currentTree.node = bk;
-            }
-        } else if (found.body == null) {
-            //found is abstract
-            System.err.println(" -- Dealing with abstract method! --");
-        } else {
-            PathNode bk = currentTree.node;
-            currentTree.setRoot(found);
-            buildpath(currentTree.node);
-            currentTree.node = bk;
-        }
-    }
-
-    JCTree.JCMethodDecl lookupMethod(JCTree.JCPropagateMethod m) {
+    List<JCTree.JCMethodDecl> lookupMethods(JCTree.JCPropagateMethodSimple m) {
         JCTree.JCClassDecl clazz = getClassForType(m.selector.selected.type);
 
         if (clazz == null) return null;
 
         JCTree.JCMethodDecl method = getOwnMethod(clazz, m.sym);
-        return method;
+        List<JCTree.JCMethodDecl> lst = new ArrayList<JCTree.JCMethodDecl>();
+        if (method == null) {
+            method = getSuperMethod(clazz, m.sym);
+        }
+        lst.add(method);
+        return lst;
+    }
+
+    List<JCTree.JCMethodDecl> lookupMethods(JCTree.JCPropagateMethodPolym m) {
+        List<JCTree.JCMethodDecl> ret = new ArrayList<JCTree.JCMethodDecl>();
+        for(JCTree.JCExpression s : m.selectors) {
+            JCTree.JCFieldAccess f = (JCTree.JCFieldAccess) s;
+            JCTree.JCClassDecl clazz = getClassForType(f.selected.type);
+
+            if (clazz == null) continue; //ignore ast-unreachable classes
+
+            JCTree.JCMethodDecl method = getOwnMethod(clazz, f.sym);
+            if (method == null) {
+                log.error(m.pos(),
+                        "propagate.no.method.found",
+                        f.name.toString(), clazz.name.toString());
+            } else {
+                ret.add(method);
+            }
+        }
+        return ret;
     }
 
     JCTree.JCMethodDecl lookupMethod(JCTree.JCMethodInvocation m) {
@@ -278,5 +161,184 @@ public class PropagateFlow extends TreeScanner {
             }
         }
         return null;
+    }
+
+    private List<List<JCTree.JCMethodDecl>> targetsLeft;
+    private List<JCTree.JCMethodDecl> nextTargets;
+    private PathTree currentTree;
+
+    public void process(JCTree.JCPropagate p) {
+        this.targetsLeft = new ArrayList<List<JCTree.JCMethodDecl>>();
+
+        for(JCTree m : p.nodes) {
+            List<JCTree.JCMethodDecl> methods = new ArrayList<JCTree.JCMethodDecl>();
+            if (m.getTag() == JCTree.PROPAGATE_METHOD_SIMPLE) {
+                methods = lookupMethods((JCTree.JCPropagateMethodSimple)m);
+            } else if (m.getTag() == JCTree.PROPAGATE_METHOD_POLYM) {
+
+                //important: the first item in this list
+                //is the base type "C" in the decl "A,B<:C".
+                //we will use this specifically later on
+                methods = lookupMethods((JCTree.JCPropagateMethodPolym)m);
+
+            } else {
+                System.out.println("UOPS! this is a bug");
+                //error!
+            }
+            if (methods.isEmpty()) {
+                //some propagate nodes wheren't found
+                //maybe due to previous errors or because
+                //there is no AST in the envs for the specified method
+                //...so bail
+                return;
+            }
+            targetsLeft.add(methods);
+        }
+//        //popping...
+        List<JCTree.JCMethodDecl> initials = targetsLeft.remove(targetsLeft.size()-1);
+        this.nextTargets = targetsLeft.remove(targetsLeft.size()-1);
+
+        for (JCTree.JCMethodDecl m : initials) {
+            this.currentTree = new PathTree(m, p.thrown);
+            buildpath(this.currentTree.node);
+        }
+
+        if (!this.currentTree.atLeastOnePathFound) {
+            log.error(p.pos(),
+                        "propagate.no.callgraph");
+        }
+    }
+
+    void buildpath(PathNode node) {
+        scan(node.self.body);
+    }
+
+    public boolean checkRecursion(JCTree.JCMethodDecl m, PathNode node) {
+        if (node == null) {
+            return false;
+        } else if (node.self.type == m.type) {
+            return true;
+        } else {
+            return checkRecursion(m, node.parent);
+        }
+    }
+
+    boolean matchTargets(JCTree.JCMethodDecl m) {
+        //we will match m on the nextTarget's head
+        // -if its a simple node, the head is the actual node
+        // -if its polym, the head is the base class
+        JCTree.JCMethodDecl base = this.nextTargets.get(0);
+        return (base.sym == m.sym);
+    }
+
+    public void visitApply(JCTree.JCMethodInvocation m) {
+        JCTree.JCMethodDecl found = lookupMethod(m);
+        if (found == null) {
+            //the 'm' method is not in any ast
+            //Doing nothing == finding a dead end in the graph path.
+            //lets do nothing.
+        } else if (checkRecursion(found, currentTree.node)) {
+            //we already went that way...
+            //lets do nothing
+        } else if (matchTargets(found)) { //found is propagate node
+            if (this.targetsLeft.isEmpty()) { //we found the last propagate node: full match
+                currentTree.setRoot(found);
+                currentTree.setupThrowPath();
+            } else {
+                //-load the next nextTargets
+                //-proceed exploration of each method in each body of each method matched
+                List<JCTree.JCMethodDecl> tgs = this.nextTargets;
+                this.nextTargets = targetsLeft.remove(targetsLeft.size()-1);
+                if (tgs.size() == 0) { //simple propagate
+                    PathNode bk = currentTree.node;
+                    currentTree.setRoot(tgs.get(0));
+                    buildpath(currentTree.node);
+                    currentTree.node = bk;
+
+                } else { //polym propagate
+                    //for all subtypes+supertype X, navigate on X:m()'s body
+                    for (JCTree.JCMethodDecl t : tgs) {
+                       PathNode bk = currentTree.node;
+                       currentTree.setRoot(t);
+                       buildpath(currentTree.node);
+                       currentTree.node = bk;
+                    }
+                }
+                targetsLeft.add(tgs);
+                this.nextTargets = tgs;
+            }
+        } else if (found.body == null) {
+            //found is abstract. dead end
+        } else { //not a propagate node. keep searching
+            PathNode bk = currentTree.node;
+            currentTree.setRoot(found);
+            buildpath(currentTree.node);
+            currentTree.node = bk;
+        }
+    }
+
+
+
+    class PathTree {
+        public PathNode node = null;
+        public JCTree.JCExpression thrown;
+        public boolean atLeastOnePathFound;
+        PathTree(JCTree.JCMethodDecl m, JCTree.JCExpression thr) {
+            setRoot(m);
+            this.thrown = thr;
+            this.atLeastOnePathFound = false;
+        }
+
+        void setRoot(JCTree.JCMethodDecl m) {
+            this.node = new PathNode(m, this.node);
+        }
+
+        void setupThrowPath() {
+            this.atLeastOnePathFound = true;
+            this.node.setupThrows(thrown);
+
+            System.out.println(this.pathAsString(this.node));
+        }
+
+        String pathAsString(PathNode n) {
+            if (n.parent != null) {
+                return pathAsString(n.parent) + " -> "
+                        + n.self.sym.owner.name + "::" + n.self.name
+                        + "(" + n.self.params.toString(",") + ")";
+            }
+            return n.self.sym.owner.name + "::" + n.self.name
+                    + "(" + n.self.params.toString(",") + ")";
+        }
+    }
+
+    class PathNode {
+        public PathNode parent;
+        public JCTree.JCMethodDecl self;
+
+        public PathNode(JCTree.JCMethodDecl m, PathNode parent) {
+            this.parent = parent;
+            this.self = m;
+        }
+
+        public void setupThrows(JCTree.JCExpression t) {
+            if (!alreadyThrows((JCTree.JCIdent)t)) {
+                this.self.thrown = this.self.thrown.append(t);
+                this.self.type.asMethodType().thrown
+                        = this.self.type.asMethodType().thrown.append(t.type);
+            }
+            if (this.parent != null) {
+                this.parent.setupThrows(t);
+            }
+        }
+
+        public boolean alreadyThrows(JCTree.JCIdent t) {
+            for(JCTree.JCExpression e : self.thrown) {
+                JCTree.JCIdent i = (JCTree.JCIdent) e;
+                if (i.sym == t.sym) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }

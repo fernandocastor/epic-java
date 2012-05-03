@@ -94,7 +94,8 @@ public interface TreeVisitor<R,P> {
     R visitThrow(ThrowTree node, P p);
     R visitCompilationUnit(CompilationUnitTree node, P p);
     R visitPropagate(PropagateTree tree, P p);
-    R visitPropagateMethod(PropagateMethodTree tree, P p);
+    R visitPropagateMethod(PropagateMethodSimpleTree tree, P p);
+    R visitPropagateMethod(PropagateMethodPolymTree tree, P p);
     R visitTry(TryTree node, P p);
     R visitParameterizedType(ParameterizedTypeTree node, P p);
     R visitUnionType(UnionTypeTree node, P p);
