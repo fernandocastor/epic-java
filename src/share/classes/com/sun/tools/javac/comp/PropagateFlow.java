@@ -11,6 +11,7 @@ import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.ListBuffer;
 import com.sun.tools.javac.util.Log;
 
+import com.sun.tools.javac.util.Name;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -198,15 +199,22 @@ public class PropagateFlow extends TreeScanner {
                 //...so bail
                 return;
             }
-            targetsLeft.add(methods);
+            this.targetsLeft.add(methods);
         }
 //        //popping...
-        List<JCTree.JCMethodDecl> initials = targetsLeft.remove(targetsLeft.size()-1);
-        this.nextTargets = targetsLeft.remove(targetsLeft.size()-1);
 
-        for (JCTree.JCMethodDecl m : initials) {
-            this.currentTree = new PathTree(m, p.thrown);
+
+        List<JCTree.JCMethodDecl> initials = this.targetsLeft.remove(this.targetsLeft.size()-1);
+        this.nextTargets = this.targetsLeft.remove(this.targetsLeft.size()-1);
+
+        if (initials.size() == 1) { //last node is simple
+            this.currentTree = new PathTree(initials.get(0), p.thrown);
             buildpath(this.currentTree.node);
+        } else { //last node is polym
+            for (JCTree.JCMethodDecl m : initials) {
+                this.currentTree = new PathTree(m, initials.get(0), p.thrown);
+                buildpath(this.currentTree.node);
+            }
         }
 
         if (!this.currentTree.atLeastOnePathFound) {
@@ -248,14 +256,23 @@ public class PropagateFlow extends TreeScanner {
             //lets do nothing
         } else if (matchTargets(found)) { //found is propagate node
             if (this.targetsLeft.isEmpty()) { //we found the last propagate node: full match
+                PathNode bk = currentTree.node;
                 currentTree.setRoot(found);
                 currentTree.setupThrowPath();
+                //a polym node might be the first (origin) node. exhaust it:
+                if (this.nextTargets.size() > 1) {
+                    for (int i = 1; i < this.nextTargets.size(); i++) {
+                        currentTree.node = bk;
+                        currentTree.setRoot(this.nextTargets.get(i), this.nextTargets.get(0));
+                        currentTree.setupThrowPath();
+                    }
+                }
             } else {
                 //-load the next nextTargets
                 //-proceed exploration of each method in each body of each method matched
                 List<JCTree.JCMethodDecl> tgs = this.nextTargets;
                 this.nextTargets = targetsLeft.remove(targetsLeft.size()-1);
-                if (tgs.size() == 0) { //simple propagate
+                if (tgs.size() == 1) { //simple propagate
                     PathNode bk = currentTree.node;
                     currentTree.setRoot(tgs.get(0));
                     buildpath(currentTree.node);
@@ -265,12 +282,12 @@ public class PropagateFlow extends TreeScanner {
                     //for all subtypes+supertype X, navigate on X:m()'s body
                     for (JCTree.JCMethodDecl t : tgs) {
                        PathNode bk = currentTree.node;
-                       currentTree.setRoot(t);
+                       currentTree.setRoot(t, tgs.get(0));
                        buildpath(currentTree.node);
                        currentTree.node = bk;
                     }
                 }
-                targetsLeft.add(tgs);
+                targetsLeft.add(this.nextTargets);
                 this.nextTargets = tgs;
             }
         } else if (found.body == null) {
@@ -295,15 +312,25 @@ public class PropagateFlow extends TreeScanner {
             this.atLeastOnePathFound = false;
         }
 
+        PathTree(JCTree.JCMethodDecl m, JCTree.JCMethodDecl base, JCTree.JCExpression thr) {
+            setRoot(m,base);
+            this.thrown = thr;
+            this.atLeastOnePathFound = false;
+        }
+
         void setRoot(JCTree.JCMethodDecl m) {
             this.node = new PathNode(m, this.node);
         }
 
+        void setRoot(JCTree.JCMethodDecl m, JCTree.JCMethodDecl base) {
+            this.node = new PathNode(m, base, this.node);
+        }
+
         void setupThrowPath() {
             this.atLeastOnePathFound = true;
-            this.node.setupThrows((JCTree.JCIdent)thrown);
-
             System.out.println(this.pathAsString(this.node));
+
+            this.node.setupThrows((JCTree.JCIdent)thrown);
         }
 
         String pathAsString(PathNode n) {
@@ -320,23 +347,55 @@ public class PropagateFlow extends TreeScanner {
     class PathNode {
         public PathNode parent;
         public JCTree.JCMethodDecl self;
+        public JCTree.JCMethodDecl base; //polym base method z in {x,y <: _z_}
 
         public PathNode(JCTree.JCMethodDecl m, PathNode parent) {
             this.parent = parent;
             this.self = m;
+            this.base = null;
+        }
+
+        public PathNode(JCTree.JCMethodDecl m, JCTree.JCMethodDecl base, PathNode parent) {
+            this.parent = parent;
+            this.self = m;
+            this.base = base;
         }
 
         public void setupThrows(JCTree.JCIdent t) {
             if (!alreadyThrows(t)) {
-                JCTree.JCClassDecl clazz = getClassForType(this.self.sym.owner.type);
+                //check overriding
+                //if its a polym node, this.base is the base B in {... <: B}
+                //we then check for overriden methods on B's superclasses.
+                //otherwise, we check for overriden in this.self superclasses
+                JCTree.JCMethodDecl uppermost =
+                        this.base == null ? this.self : this.base;
+                JCTree.JCClassDecl clazz = getClassForType(uppermost.sym.owner.type);
                 if (!canOverrideMethodThrow(clazz, this.self, t)) {
                     log.error(this.self.pos(),
                     "propagate.incompatible.throws", this.self.sym,
                     t.type);
                 } else {
+                    //add exception type to thrown list
                     this.self.thrown = this.self.thrown.append(t);
                     this.self.type.asMethodType().thrown
                             = this.self.type.asMethodType().thrown.append(t.type);
+                    //add exception type to overriden thrown list
+                    //from A to C in {A <: C}
+                    //if A extends B extends C, we must add thrown to B as well.
+                    if (this.base != null) {
+                        Name name = this.self.name;
+                        Symbol current = this.self.sym;
+                        while (current != this.base.sym) {
+                            current = getOverridenMethod(
+                                            getClassForType(current.owner.type),
+                                               current, name);
+                            if (current != null) {
+                                current.type.asMethodType().thrown =
+                                        current.type.asMethodType().thrown.append(t.type);
+
+                            }
+                        }
+                    }
                 }
             }
             if (this.parent != null) {
@@ -351,44 +410,37 @@ public class PropagateFlow extends TreeScanner {
             thrown.add(t.type);
             return chk.unhandled(thrown.toList(),
                                  self.type.asMethodType().thrown).isEmpty();
-//            for(JCTree.JCExpression e : self.thrown) {
-//                JCTree.JCIdent i = (JCTree.JCIdent) e;
-//                if (t.sym.isSubClass(i.sym, types)) {
-//                    return true;
-//                }
-//            }
-//            return false;
         }
     }
 
-    public boolean canOverrideMethodThrow(JCTree.JCClassDecl clazz, JCTree.JCMethodDecl m, JCTree.JCIdent t) {
-        //check for parent overrided methods. If they can throw
-        //E, we can.
+    public Symbol getOverridenMethod(JCTree.JCClassDecl clazz,
+                                     Symbol ms, Name mname) {
 
-        if (clazz.extending == null) return true;
+        if (clazz.extending == null) return null;
 
         JCTree.JCClassDecl superclazz = getClassForType(clazz.extending.type);
 
-        Scope.Entry e = superclazz.sym.members().lookup(m.name);
+        Scope.Entry e = superclazz.sym.members().lookup(mname);
 
         while (e.scope != null) {
-            if (m.sym.overrides(e.sym,clazz.sym.type.tsym, types, false)) {
-                return chk.isHandled(t.type,e.sym.type.asMethodType().thrown);
-/*
-   From Check.java
-        List<Type> otthrown = types.subst(ot.getThrownTypes(), otvars, mtvars);
-        List<Type> unhandledErased = unhandled(mt.getThrownTypes(), types.erasure(otthrown));
-        List<Type> unhandledUnerased = unhandled(mt.getThrownTypes(), otthrown);
-        if (unhandledErased.nonEmpty()) {
-            log.error(TreeInfo.diagnosticPositionFor(m, tree),
-                      "override.meth.doesnt.throw",
-                      cannotOverride(m, other),
-                      unhandledUnerased.head);
-        }
- */
+            if (ms.overrides(e.sym,clazz.sym.type.tsym, types, false)) {
+                return e.sym;
             }
             e = e.next();
         }
-        return canOverrideMethodThrow(superclazz, m, t);
+        return getOverridenMethod(superclazz, ms, mname);
+    }
+
+    public boolean canOverrideMethodThrow(JCTree.JCClassDecl clazz,
+                                          JCTree.JCMethodDecl m,
+                                          JCTree.JCIdent t) {
+        //check for parent overrided methods. If they can throw
+        //E, we can.
+        Symbol overriden = getOverridenMethod(clazz, m.sym, m.name);
+        if (overriden == null) {
+            return true;
+        } else {
+            return chk.isHandled(t.type,overriden.type.asMethodType().thrown);
+        }
     }
 }
