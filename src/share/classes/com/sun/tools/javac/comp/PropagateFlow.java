@@ -1,11 +1,14 @@
 package com.sun.tools.javac.comp;
 
 import com.sun.tools.javac.code.Kinds;
+import com.sun.tools.javac.code.Scope;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Type;
+import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeScanner;
 import com.sun.tools.javac.util.Context;
+import com.sun.tools.javac.util.ListBuffer;
 import com.sun.tools.javac.util.Log;
 
 import java.util.ArrayList;
@@ -26,9 +29,10 @@ public class PropagateFlow extends TreeScanner {
     Env<AttrContext> env;
     //private final Names names;
     private final Log log;
+    private Types types;
     //private final Symtab syms;
     //private final Types types;
-    //private final Check chk;
+    private final Check chk;
     //private       TreeMaker make;
     //private final Resolve rs;
     //private Env<AttrContext> attrEnv;
@@ -38,7 +42,9 @@ public class PropagateFlow extends TreeScanner {
     public PropagateFlow(Context context) {
         //...and this thing.
         //context.put(pflowKey, this);
+        this.types = Types.instance(context);
         log = Log.instance(context);
+        chk = Check.instance(context);
     }
 
     private ArrayList<Env<AttrContext>> envs;
@@ -295,7 +301,7 @@ public class PropagateFlow extends TreeScanner {
 
         void setupThrowPath() {
             this.atLeastOnePathFound = true;
-            this.node.setupThrows(thrown);
+            this.node.setupThrows((JCTree.JCIdent)thrown);
 
             System.out.println(this.pathAsString(this.node));
         }
@@ -320,25 +326,69 @@ public class PropagateFlow extends TreeScanner {
             this.self = m;
         }
 
-        public void setupThrows(JCTree.JCExpression t) {
-            if (!alreadyThrows((JCTree.JCIdent)t)) {
-                this.self.thrown = this.self.thrown.append(t);
-                this.self.type.asMethodType().thrown
-                        = this.self.type.asMethodType().thrown.append(t.type);
+        public void setupThrows(JCTree.JCIdent t) {
+            if (!alreadyThrows(t)) {
+                JCTree.JCClassDecl clazz = getClassForType(this.self.sym.owner.type);
+                if (!canOverrideMethodThrow(clazz, this.self, t)) {
+                    log.error(this.self.pos(),
+                    "propagate.incompatible.throws", this.self.sym,
+                    t.type);
+                } else {
+                    this.self.thrown = this.self.thrown.append(t);
+                    this.self.type.asMethodType().thrown
+                            = this.self.type.asMethodType().thrown.append(t.type);
+                }
             }
             if (this.parent != null) {
                 this.parent.setupThrows(t);
             }
         }
 
+        //check if the method self already specifies it
+        //throws t (or a superclass of t)
         public boolean alreadyThrows(JCTree.JCIdent t) {
-            for(JCTree.JCExpression e : self.thrown) {
-                JCTree.JCIdent i = (JCTree.JCIdent) e;
-                if (i.sym == t.sym) {
-                    return true;
-                }
-            }
-            return false;
+            ListBuffer<Type> thrown = new ListBuffer<Type>();
+            thrown.add(t.type);
+            return chk.unhandled(thrown.toList(),
+                                 self.type.asMethodType().thrown).isEmpty();
+//            for(JCTree.JCExpression e : self.thrown) {
+//                JCTree.JCIdent i = (JCTree.JCIdent) e;
+//                if (t.sym.isSubClass(i.sym, types)) {
+//                    return true;
+//                }
+//            }
+//            return false;
         }
+    }
+
+    public boolean canOverrideMethodThrow(JCTree.JCClassDecl clazz, JCTree.JCMethodDecl m, JCTree.JCIdent t) {
+        //check for parent overrided methods. If they can throw
+        //E, we can.
+
+        if (clazz.extending == null) return true;
+
+        JCTree.JCClassDecl superclazz = getClassForType(clazz.extending.type);
+
+        Scope.Entry e = superclazz.sym.members().lookup(m.name);
+
+        while (e.scope != null) {
+            if (m.sym.overrides(e.sym,clazz.sym.type.tsym, types, false)) {
+                return chk.isHandled(t.type,e.sym.type.asMethodType().thrown);
+/*
+   From Check.java
+        List<Type> otthrown = types.subst(ot.getThrownTypes(), otvars, mtvars);
+        List<Type> unhandledErased = unhandled(mt.getThrownTypes(), types.erasure(otthrown));
+        List<Type> unhandledUnerased = unhandled(mt.getThrownTypes(), otthrown);
+        if (unhandledErased.nonEmpty()) {
+            log.error(TreeInfo.diagnosticPositionFor(m, tree),
+                      "override.meth.doesnt.throw",
+                      cannotOverride(m, other),
+                      unhandledUnerased.head);
+        }
+ */
+            }
+            e = e.next();
+        }
+        return canOverrideMethodThrow(superclazz, m, t);
     }
 }
