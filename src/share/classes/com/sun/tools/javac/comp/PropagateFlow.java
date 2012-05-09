@@ -219,21 +219,30 @@ public class PropagateFlow extends TreeScanner {
 
 
         List<JCTree.JCMethodDecl> initials = this.targetsLeft.remove(this.targetsLeft.size()-1);
-        this.nextTargets = this.targetsLeft.remove(this.targetsLeft.size()-1);
 
-        if (initials.size() == 1) { //last node is simple
-            this.currentTree = new PathTree(initials.get(0), p.thrown);
-            buildpath(this.currentTree.node);
-        } else { //last node is polym
+        if (this.targetsLeft.size() == 0) { //single node
             for (JCTree.JCMethodDecl m : initials) {
-                this.currentTree = new PathTree(m, initials.get(0), p.thrown);
-                buildpath(this.currentTree.node);
+                m.thrown = m.thrown.append(p.thrown);
+                m.type.asMethodType().thrown =
+                        m.type.asMethodType().thrown.append(p.thrown.type);
             }
-        }
+        } else {
+            this.nextTargets = this.targetsLeft.remove(this.targetsLeft.size()-1);
 
-        if (!this.currentTree.atLeastOnePathFound) {
-            log.error(p.pos(),
-                        "propagate.no.callgraph");
+            if (initials.size() == 1) { //last node is simple
+                this.currentTree = new PathTree(initials.get(0), p.thrown);
+                buildpath(this.currentTree.node);
+            } else { //last node is polym
+                for (JCTree.JCMethodDecl m : initials) {
+                    this.currentTree = new PathTree(m, initials.get(0), p.thrown);
+                    buildpath(this.currentTree.node);
+                }
+            }
+
+            if (!this.currentTree.atLeastOnePathFound) {
+                log.error(p.pos(),
+                            "propagate.no.callgraph");
+            }
         }
     }
 
