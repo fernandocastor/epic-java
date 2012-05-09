@@ -113,14 +113,28 @@ public class PropagateFlow extends TreeScanner {
     }
 
     JCTree.JCMethodDecl lookupMethod(JCTree.JCMethodInvocation m) {
-        JCTree.JCFieldAccess f = (JCTree.JCFieldAccess) m.meth;
-        JCTree.JCClassDecl clazz = getClassForType(f.selected.type);
+        JCTree.JCClassDecl clazz = null;
+        Symbol s = null;
+        switch (m.meth.getTag()) {
+            case JCTree.IDENT:
+                JCTree.JCIdent i = (JCTree.JCIdent) m.meth;
+                clazz = getClassForType(i.sym.owner.type);
+                s = i.sym;
+                break;
+            case JCTree.SELECT:
+                JCTree.JCFieldAccess f = (JCTree.JCFieldAccess) m.meth;
+                s = f.sym;
+                clazz = getClassForType(f.selected.type);
+                break;
+            default:
+                System.err.println("+++ BUG");
+        }
 
         if (clazz == null) return null;
 
-        JCTree.JCMethodDecl method = getOwnMethod(clazz, f.sym);
+        JCTree.JCMethodDecl method = getOwnMethod(clazz, s);
         if (method == null) {
-            method = getSuperMethod(clazz, f.sym);
+            method = getSuperMethod(clazz, s);
         }
         return method;
     }
