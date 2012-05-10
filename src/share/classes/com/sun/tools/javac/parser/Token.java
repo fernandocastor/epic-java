@@ -77,7 +77,7 @@ public enum Token implements Formattable {
     PRIVATE("private"),
     PROTECTED("protected"),
     PUBLIC("public"),
-    PROPAGATE("propagate"),
+    PROPAGATE("propagating"),
     RETURN("return"),
     SHORT("short"),
     STATIC("static"),
