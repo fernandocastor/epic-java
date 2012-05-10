@@ -154,7 +154,10 @@ public class TreeMaker implements JCTree.Factory {
     public JCPropagateMethodSimple PropagateMethodSimple(JCExpression clazz,
                                              Name name,
                                              List<JCVariableDecl> params) {
-        JCPropagateMethodSimple tree = new JCPropagateMethodSimple(clazz, name, params);
+
+        Name mname = ((JCIdent)clazz).name == name ? names.init : name;
+
+        JCPropagateMethodSimple tree = new JCPropagateMethodSimple(clazz, mname, params);
         tree.pos = pos;
         return tree;
     }

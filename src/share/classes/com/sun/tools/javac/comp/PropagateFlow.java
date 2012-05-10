@@ -6,6 +6,7 @@ import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.JCTree.JCNewClass;
 import com.sun.tools.javac.tree.TreeScanner;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.ListBuffer;
@@ -110,6 +111,11 @@ public class PropagateFlow extends TreeScanner {
             }
         }
         return ret;
+    }
+
+    JCTree.JCMethodDecl lookupMethod(JCNewClass nclass) {
+        JCTree.JCClassDecl clazz = getClassForType(nclass.clazz.type);
+        return getOwnMethod(clazz, nclass.constructor);
     }
 
     JCTree.JCMethodDecl lookupMethod(JCTree.JCMethodInvocation m) {
@@ -268,8 +274,15 @@ public class PropagateFlow extends TreeScanner {
         return (base.sym == m.sym);
     }
 
+    public void visitNewClass(JCNewClass tree) {
+        processMethod(lookupMethod(tree));
+    }
+
     public void visitApply(JCTree.JCMethodInvocation m) {
-        JCTree.JCMethodDecl found = lookupMethod(m);
+        processMethod(lookupMethod(m));
+    }
+
+    public void processMethod(JCTree.JCMethodDecl found) {
         if (found == null) {
             //the 'm' method is not in any ast
             //Doing nothing == finding a dead end in the graph path.
