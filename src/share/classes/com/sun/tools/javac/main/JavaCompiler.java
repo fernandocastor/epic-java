@@ -882,7 +882,10 @@ public class JavaCompiler implements ClassReader.SourceCompleter {
                     //type and sym objects are lost from the tree
                     //after those stages.
                 }
-                pflow.analysePropagate(envs);
+
+                if (errorCount() == 0) {
+                    pflow.analysePropagate(envs);
+                }
                 for (Env<AttrContext> e : envs) {
                     if(e.tree.getTag() != JCTree.PROPAGATE) {
                         generate(desugar(flow(e)));
