@@ -27,9 +27,11 @@
 
 package com.sun.tools.javac.comp;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.LinkedHashMap;
 
 import com.sun.tools.javac.code.*;
 import com.sun.tools.javac.tree.*;
@@ -768,6 +770,8 @@ public class Flow extends TreeScanner {
                     }
                 } else {
                     // uncaught throws will be reported later
+
+                    ScriptPropagate.logPropagateError(exit, tree);
                     pendingExits.append(exit);
                 }
             }

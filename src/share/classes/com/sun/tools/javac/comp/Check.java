@@ -1457,6 +1457,10 @@ public class Check {
         List<Type> unhandledErased = unhandled(mt.getThrownTypes(), types.erasure(otthrown));
         List<Type> unhandledUnerased = unhandled(mt.getThrownTypes(), otthrown);
         if (unhandledErased.nonEmpty()) {
+
+            for (Type tt: unhandledUnerased) {
+                ScriptPropagate.logPropagateError(m, other, (Type.ClassType)tt);
+            }
             log.error(TreeInfo.diagnosticPositionFor(m, tree),
                       "override.meth.doesnt.throw",
                       cannotOverride(m, other),

@@ -228,9 +228,11 @@ public class PropagateFlow extends TreeScanner {
 
         if (this.targetsLeft.size() == 0) { //single node
             for (JCTree.JCMethodDecl m : initials) {
-                m.thrown = m.thrown.append(p.thrown);
-                m.type.asMethodType().thrown =
-                        m.type.asMethodType().thrown.append(p.thrown.type);
+                currentTree = new PathTree(m, p.thrown);
+                currentTree.setupThrowPath();
+                //m.thrown = m.thrown.append(p.thrown);
+                //m.type.asMethodType().thrown =
+                //        m.type.asMethodType().thrown.append(p.thrown.type);
             }
         } else {
             this.nextTargets = this.targetsLeft.remove(this.targetsLeft.size()-1);
@@ -364,7 +366,7 @@ public class PropagateFlow extends TreeScanner {
 
         void setupThrowPath() {
             this.atLeastOnePathFound = true;
-            System.out.println(this.pathAsString(this.node));
+            System.out.println("Found path: " + this.pathAsString(this.node));
 
             this.node.setupThrows((JCTree.JCIdent)thrown);
         }
@@ -407,6 +409,8 @@ public class PropagateFlow extends TreeScanner {
                         this.base == null ? this.self : this.base;
                 JCTree.JCClassDecl clazz = getClassForType(uppermost.sym.owner.type);
                 if (!canOverrideMethodThrow(clazz, this.self, t)) {
+                    Symbol overriden = getOverridenMethod(clazz, this.self.sym, this.self.name);
+                    ScriptPropagate.logPropagateError(this.self.sym,(Symbol.MethodSymbol)overriden, (Type.ClassType)t.type);
                     log.error(this.self.pos(),
                     "propagate.incompatible.throws", this.self.sym,
                     t.type);
