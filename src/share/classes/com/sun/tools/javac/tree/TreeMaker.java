@@ -155,7 +155,15 @@ public class TreeMaker implements JCTree.Factory {
                                              Name name,
                                              List<JCVariableDecl> params) {
 
-        Name mname = ((JCIdent)clazz).name == name ? names.init : name;
+        Name mname = null;
+        if (clazz.getTag() == JCTree.IDENT) {
+            mname = ((JCIdent)clazz).name == name ? names.init : name;
+        } else if (clazz.getTag() == JCTree.SELECT) {
+            mname = ((JCFieldAccess)clazz).name == name ? names.init : name;
+        } else {
+            System.out.println("++BUG");
+
+        }
 
         JCPropagateMethodSimple tree = new JCPropagateMethodSimple(clazz, mname, params);
         tree.pos = pos;

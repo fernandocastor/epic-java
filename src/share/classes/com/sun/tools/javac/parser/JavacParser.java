@@ -76,6 +76,7 @@ public class JavacParser implements Parser {
     /** The name table. */
     private Names names;
 
+    private int argn = 0;
     /** Construct a parser from a given scanner, tree factory and log.
      */
     protected JavacParser(ParserFactory fac,
@@ -2403,7 +2404,7 @@ public class JavacParser implements Parser {
         }
         int pos = S.pos();
 
-        Name name = S.name();
+        Name name = names.fromString("arg"+(argn++));
         if ((mods.flags & Flags.VARARGS) != 0 &&
                 S.token() == LBRACKET) {
             log.error(S.pos(), "varargs.and.old.array.syntax");

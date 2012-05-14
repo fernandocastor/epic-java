@@ -368,7 +368,7 @@ public class PropagateFlow extends TreeScanner {
             this.atLeastOnePathFound = true;
             System.out.println("Found path: " + this.pathAsString(this.node));
 
-            this.node.setupThrows((JCTree.JCIdent)thrown);
+            this.node.setupThrows(thrown);
         }
 
         String pathAsString(PathNode n) {
@@ -399,7 +399,7 @@ public class PropagateFlow extends TreeScanner {
             this.base = base;
         }
 
-        public void setupThrows(JCTree.JCIdent t) {
+        public void setupThrows(JCTree.JCExpression t) {
             if (!alreadyThrows(t)) {
                 //check overriding
                 //if its a polym node, this.base is the base B in {... <: B}
@@ -445,7 +445,7 @@ public class PropagateFlow extends TreeScanner {
 
         //check if the method self already specifies it
         //throws t (or a superclass of t)
-        public boolean alreadyThrows(JCTree.JCIdent t) {
+        public boolean alreadyThrows(JCTree.JCExpression t) {
             ListBuffer<Type> thrown = new ListBuffer<Type>();
             thrown.add(t.type);
             return chk.unhandled(thrown.toList(),
@@ -473,7 +473,7 @@ public class PropagateFlow extends TreeScanner {
 
     public boolean canOverrideMethodThrow(JCTree.JCClassDecl clazz,
                                           JCTree.JCMethodDecl m,
-                                          JCTree.JCIdent t) {
+                                          JCTree.JCExpression t) {
         //check for parent overrided methods. If they can throw
         //E, we can.
         Symbol overriden = getOverridenMethod(clazz, m.sym, m.name);
