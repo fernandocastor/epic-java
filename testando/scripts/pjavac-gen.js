@@ -54,11 +54,15 @@ function show_nodes() {
 function start() {
   var count = 0;
   get_roots(function(roots) {
-    for(var i = 0; i < roots.length; i++) {
-      process_spec(roots[i], null, function() {
-        count++;
-        if (count == roots.length) exit();
-      });
+    if (roots.length == 0) {
+      exit(0);
+    } else {
+      for(var i = 0; i < roots.length; i++) {
+        process_spec(roots[i], null, function() {
+          count++;
+          if (count == roots.length) exit();
+        });
+      }
     }
   });
 }
@@ -93,6 +97,7 @@ function get_roots(retf) {
   col.find({calls:[]}, function(e, c) {
       if (e) throw new Error(e);
       else c.toArray(function(error, items) {
+        if (error) throw new Error(e);
         retf(items);
       });
   });
