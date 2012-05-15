@@ -532,8 +532,19 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         //in Attr.java visitPropagate()
         todo.append(env.dup(tree));
 
+        //setup environment to workaround
+        //access policy
+        //(thrown might be private from where we stand in env)
+        Env<AttrContext> privEnv =
+            env.dup(tree, env.info.dup());
+        Symbol classSymbol = attr.dirtyPreAttrib(tree.thrown, privEnv, VAL | TYP, Infer.anyPoly);
+        privEnv.outer = env;
+        privEnv.info.isSelfCall = false;
+        privEnv.info.lint = null;
+        privEnv.enclClass.sym = (ClassSymbol)classSymbol; //argh
+
         //load symbol for the thrown type
-        /*Type exc = */attr.attribType(tree.thrown, env);
+        /*Type exc = */attr.attribType(tree.thrown, privEnv);
 
         for (JCTree m : tree.nodes) {
             m.accept(this);

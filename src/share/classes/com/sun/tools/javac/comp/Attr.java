@@ -731,6 +731,42 @@ public class Attr extends JCTree.Visitor {
         }
     }
 
+
+    public Symbol dirtyPreAttrib(JCTree tree, Env<AttrContext> env, int pkind, Type pt) {
+        switch (tree.getTag()) {
+            case JCTree.SELECT:
+
+                //from visitSelect():
+                JCFieldAccess f = (JCFieldAccess)tree;
+                int skind = 0;
+                if (f.name == names._this || f.name == names._super ||
+                    f.name == names._class)
+                {
+                    skind = TYP;
+                } else {
+                    if ((pkind & PCK) != 0) skind = skind | PCK;
+                    if ((pkind & TYP) != 0) skind = skind | TYP | PCK;
+                    if ((pkind & (VAL | MTH)) != 0) skind = skind | VAL | TYP;
+                }
+                //
+
+                Symbol s = dirtyPreAttrib(f.selected, env, skind, pt);
+                env.info.scope = new Scope(s);
+                if (s.kind == Kinds.TYP)
+                    env.enclClass.sym = (ClassSymbol)s; //argh
+                else
+                    env.toplevel.packge = (PackageSymbol)s;
+                attribTree(tree, env, pkind, pt);
+                return TreeInfo.symbol(tree);
+            case JCTree.IDENT:
+                attribTree(tree, env, TYP | PCK, pt);
+                return TreeInfo.symbol(tree);
+            default:
+                System.out.println("++BUG");
+        }
+        return null;
+    }
+
     public void visitPropagateMethod(JCPropagateMethodSimple tree) {
         //checking if the method exists...
         //Given C.m(), we should not care if m is static or instance-specific.
@@ -745,8 +781,34 @@ public class Attr extends JCTree.Visitor {
         //Type mtype = attribExpr(tree.selector, localEnv, mpt);
         int skind = VAL | TYP;
         //the following will attribute the lhs/rhs classes
-        Type site = attribTree(tree.selector.selected, env, skind, Infer.anyPoly);
 
+        //we need to enter the scope of the receiver class
+        //so we don't get access errors on private methods.
+        //dirty ahead!!
+        Env<AttrContext> privEnv =
+            env.dup(tree, env.info.dup());
+
+        Symbol classSymbol = dirtyPreAttrib(tree.selector.selected, privEnv, skind, Infer.anyPoly);
+        //creating an env scoped on classSymbol
+        //copied from Enter::classEnv()
+        privEnv.outer = env;
+        privEnv.info.isSelfCall = false;
+        privEnv.info.lint = null;
+        privEnv.enclClass.sym = (ClassSymbol)classSymbol; //argh
+
+        //Name fullname = TreeInfo.fullName(tree.selector.selected);
+        //Name flat = names.fromString(fullname.toString().replace('.', '$'));
+        //ClassSymbol classSymbol  = reader.enterClass(flat);
+        //Env<AttrContext> privEnv =
+        //    env.dup(tree, env.info.dup(new Scope(classSymbol)));
+        //localEnv.enclClass = tree; //we dont have a classdecl around
+
+        //this will attribute all classes in (X.Y.Z.m) except "m"
+        //in the scope of class Z (as privEnv)
+        attribTree(tree.selector.selected, privEnv, skind, Infer.anyPoly);
+
+        //now attribute "m"
+        Type site = classSymbol.type;
         Name name = tree.selector.name;
         DiagnosticPosition pos = tree.pos();
         tree.sym = tree.selector.sym = rs.resolveQualifiedMethod(pos, env, site.tsym, site, name,

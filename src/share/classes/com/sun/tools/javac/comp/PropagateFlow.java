@@ -7,6 +7,7 @@ import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCNewClass;
+import com.sun.tools.javac.tree.TreeInfo;
 import com.sun.tools.javac.tree.TreeScanner;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.ListBuffer;
@@ -28,7 +29,6 @@ public class PropagateFlow extends TreeScanner {
         return instance;
     }
 
-    Env<AttrContext> env;
     //private final Names names;
     private final Log log;
     private Types types;
@@ -110,11 +110,12 @@ public class PropagateFlow extends TreeScanner {
                 ret.add(method);
             }
         }
-        return ret;
+        return ret.isEmpty() ? null : ret;
     }
 
     JCTree.JCMethodDecl lookupMethod(JCNewClass nclass) {
         JCTree.JCClassDecl clazz = getClassForType(nclass.clazz.type);
+        if (clazz == null) return null;
         return getOwnMethod(clazz, nclass.constructor);
     }
 
@@ -146,24 +147,13 @@ public class PropagateFlow extends TreeScanner {
     }
 
     JCTree.JCClassDecl getClassForType(Type t) {
-        if (t.tsym.owner.kind == Kinds.PCK) {
-            for(Env<AttrContext> e : envs) {
-                 if (t == e.tree.type) {
-                        return (JCTree.JCClassDecl) e.tree;
-                 }
-            }
-        } else if (t.tsym.owner.kind == Kinds.TYP) {
-            JCTree.JCClassDecl outter = getClassForType(t.tsym.owner.type);
-            for(JCTree def : outter.defs) {
-                if (def.getTag() == JCTree.CLASSDEF) {
-                    JCTree.JCClassDecl clazz = (JCTree.JCClassDecl) def;
-                    if (t == def.type) {
-                        return clazz;
-                    }
-                }
-            }
+        JCTree tree = null;
+        for(Env<AttrContext> e : envs) {
+            tree = TreeInfo.declarationFor(t.tsym, e.tree);
+            if (tree != null)
+                break;
         }
-        return null;
+        return (JCTree.JCClassDecl)tree;
     }
 
     JCTree.JCMethodDecl getSuperMethod(JCTree.JCClassDecl subclazz, Symbol sym) {
@@ -198,7 +188,7 @@ public class PropagateFlow extends TreeScanner {
         this.targetsLeft = new ArrayList<List<JCTree.JCMethodDecl>>();
 
         for(JCTree m : p.nodes) {
-            List<JCTree.JCMethodDecl> methods = new ArrayList<JCTree.JCMethodDecl>();
+            List<JCTree.JCMethodDecl> methods = null;
             if (m.getTag() == JCTree.PROPAGATE_METHOD_SIMPLE) {
                 methods = lookupMethods((JCTree.JCPropagateMethodSimple)m);
             } else if (m.getTag() == JCTree.PROPAGATE_METHOD_POLYM) {
@@ -212,7 +202,7 @@ public class PropagateFlow extends TreeScanner {
                 System.out.println("UOPS! this is a bug");
                 //error!
             }
-            if (methods.isEmpty()) {
+            if (methods == null || methods.isEmpty()) {
                 //some propagate nodes wheren't found
                 //maybe due to previous errors or because
                 //there is no AST in the envs for the specified method
@@ -460,6 +450,7 @@ public class PropagateFlow extends TreeScanner {
 
         JCTree.JCClassDecl superclazz = getClassForType(clazz.extending.type);
 
+        if (superclazz == null) return null;
         Scope.Entry e = superclazz.sym.members().lookup(mname);
 
         while (e.scope != null) {
