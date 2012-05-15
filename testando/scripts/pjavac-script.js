@@ -118,8 +118,14 @@ function do_path(arg) {
 
     if (!call_idx) { //[ORIGIN]
       debug('creating node that calls ORIGIN')
-      create_node(spec.ex, node_idx)
-      exit();
+      get_node(spec.ex, node_idx, function(node) {
+        if (node) {
+          debug("duplicated node...passing");
+        } else {
+          create_node(spec.ex, node_idx)
+        }
+        exit();
+      });
     } else {
       debug('looking for existing call_idx node...')
       get_node(spec.ex, call_idx, function(call_node) {
