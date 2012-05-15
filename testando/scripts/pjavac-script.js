@@ -93,7 +93,7 @@ function do_super(arg) {
 
 //[ 'A::a()', 'SuperA::a()', 'E' ]
   var spec = {ex: t[2], base: t[1], sub: t[0]};
-  console.log({spec:spec});
+  //console.log({spec:spec});
 
   update_idx(spec.sub, spec.base, exit);
 }
@@ -108,7 +108,7 @@ function do_path(arg) {
     triple.push(match[1]);
   }
   var spec = {ex: triple[1], call: triple[2], node: triple[0]};
-  console.log({spec:spec});
+  //console.log({spec:spec});
 
   get_idx_ids(spec.call, spec.node, function(idx_ids) {
     var call_idx = idx_ids[0];
