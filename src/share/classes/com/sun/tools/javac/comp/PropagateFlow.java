@@ -261,11 +261,10 @@ public class PropagateFlow extends TreeScanner {
     }
 
     boolean matchTargets(JCTree.JCMethodDecl m) {
-        //we will match m on the nextTarget's head
-        // -if its a simple node, the head is the actual node
-        // -if its polym, the head is the base class
-        JCTree.JCMethodDecl base = this.nextTargets.get(0);
-        return (base.sym == m.sym);
+        for (JCTree.JCMethodDecl md : this.nextTargets) {
+            if (m.sym == md.sym) return true;
+        }
+        return false;
     }
 
     public void visitNewClass(JCNewClass tree) {
@@ -296,7 +295,7 @@ public class PropagateFlow extends TreeScanner {
         } else if (matchTargets(found)) { //found is propagate node
             if (this.targetsLeft.isEmpty()) { //we found the last propagate node: full match
                 PathNode bk = currentTree.node;
-                currentTree.setRoot(found);
+                currentTree.setRoot(found, this.nextTargets.get(0));
                 currentTree.setupThrowPath();
                 //a polym node might be the first (origin) node. exhaust it:
                 if (this.nextTargets.size() > 1) {
