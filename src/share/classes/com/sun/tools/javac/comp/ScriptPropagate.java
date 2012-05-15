@@ -23,18 +23,18 @@ import java.io.InputStreamReader;
  */
 public class ScriptPropagate {
     public static void logPropagateError(Symbol.MethodSymbol m, Symbol.MethodSymbol overrided, Type.ClassType ct) {
-        String s = "{";
+        String s = "{!";
         Symbol.ClassSymbol mcs = (Symbol.ClassSymbol) m.owner;
         Symbol.ClassSymbol cs = (Symbol.ClassSymbol) overrided.owner;
-        s += mcs.fullname + "::" + m + "} {"+ cs.fullname + "::" + overrided + "} should throw {"+ct.tsym+"}";
-        System.out.println(s);
+        s += mcs.fullname + "::" + m + "!} {!"+ cs.fullname + "::" + overrided + "!} should throw {!"+ct.tsym+"!}";
+        //System.out.println(s);
         execute(s);
     }
 
     public static void logPropagateError(PendingExit exit, JCMethodDecl tree) {
-        String s = "["+tree.sym.owner.toString()+"::" + tree.sym.toString()
-                + "] should throw [" + exit.thrown.toString()
-                + "] because it calls [";
+        String s = "[!"+tree.sym.owner.toString()+"::" + tree.sym.toString()
+                + "!] should throw [!" + exit.thrown.toString()
+                + "!] because it calls [!";
         //+ " because of " + f.selected.type.toString() + "::"+f.name + "["+f.type+"]");
         //+ " because of " + f.selected.type.toString() + "::" +f.sym;
         if (exit.tree.getTag() == JCTree.APPLY) {
@@ -54,11 +54,11 @@ public class ScriptPropagate {
                 default:
                     System.err.println("++BUG!!");
             }
-            s += "]";
+            s += "!]";
         } else {
-            s += "ORIGIN]";
+            s += "ORIGIN!]";
         }
-        System.out.println(s);
+        //System.out.println(s);
         execute(s);
     }
 

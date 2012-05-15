@@ -11,12 +11,23 @@ pnodes:
 
 var mongo = require('mongodb');
 
-var debug_dir = console.dir;
-var debug = console.log;
+var debug_dir = null;
+var debug = null;
+function set_debug(bool) {
+  if (bool) {
+    debug_dir = console.dir;
+    debug = console.log;
+  } else {
+    debug_dir = new Function
+    debug = new Function
+  }
+}
+set_debug(true);
+
+
 function exit() {
   process.exit(0);
 }
-//debug_dir = new Function;
 
 
 var db = new mongo.Db("java_msc", new mongo.Server("localhost", 27017));
@@ -50,7 +61,7 @@ function test2() {
 
 function start() {
   //return exit();
-  //return test2();
+  //return test1();
 
   if (process.argv.length != 3) {
     console.log('missing arg');
@@ -73,7 +84,7 @@ function doit(arg) {
 function do_super(arg) {
 //  doit("{A::a()} {SuperA::a()} should throw {E}");
 
-  var regex = /\{([^\}]+)\}/g
+  var regex = /\{!([^!]+)\!}/g
   var match;
   var t = [];
   while (match = regex.exec(arg)) {
@@ -82,7 +93,7 @@ function do_super(arg) {
 
 //[ 'A::a()', 'SuperA::a()', 'E' ]
   var spec = {ex: t[2], base: t[1], sub: t[0]};
-  debug_dir({spec: spec});
+  console.log({spec:spec});
 
   update_idx(spec.sub, spec.base, exit);
 }
@@ -90,14 +101,14 @@ function do_super(arg) {
 function do_path(arg) {
   //doit("[S::s()] should throw [E] because it calls [A::a()]");
 
-  var regx = /\[([^\]]+)\]/g;
+  var regx = /\[!([^!]+)!\]/g;
   var match;
   var triple = [];
   while (match = regx.exec(arg)) {
     triple.push(match[1]);
   }
   var spec = {ex: triple[1], call: triple[2], node: triple[0]};
-  debug_dir({spec: spec});
+  console.log({spec:spec});
 
   get_idx_ids(spec.call, spec.node, function(idx_ids) {
     var call_idx = idx_ids[0];
@@ -112,7 +123,7 @@ function do_path(arg) {
     } else {
       debug('looking for existing call_idx node...')
       get_node(spec.ex, call_idx, function(call_node) {
-      debug('looking for existing node_idx node...')
+        debug('looking for existing node_idx node...')
         get_node(spec.ex, node_idx, function(node) {
           if (node) {
             debug('node_idx found')
@@ -121,12 +132,26 @@ function do_path(arg) {
               add_call(node, call_node._id);
               exit();
             } else {
-              debug('WTF: node_idx found but not call_node!!')
+              debug('node found with no registered call node')
+              if (node.ex != spec.ex) {
+                debug("Exceptions differ. Create new node for new exception")
+                create_node(spec.ex, node_idx)
+                exit();
+              } else {
+                debug("Exceptions are equal -- do nothing")
+                exit();
+              }
             }
           } else {
-            debug('No node found. Creating one')
-            create_node(spec.ex, node_idx, call_node._id);
-            exit();
+            if (call_node) {
+              debug('No node found. Creating one with callnode')
+              create_node(spec.ex, node_idx, call_node._id);
+              exit();
+            } else {
+              debug('No node found. Creating one -- no callnode')
+              create_node(spec.ex, node_idx);
+              exit();
+            }
           }
         });
       });
@@ -178,7 +203,7 @@ function get_idx_ids() {
       ret.push(null);
     } else {
       get_or_create_id(sigs[i], function(id) {
-        debug("pushing ID: " + id);
+        //debug("pushing ID: " + id);
         ret.push(id);
         if (ret.length == sigs.length) fret(ret);
       });
@@ -232,116 +257,3 @@ function clazz(pair) {
 function meth(pair) {
   return pair.match(/::(.*)/)[1];
 }
-
-
-// //====
-
-// function do_super(arg) {
-//   //{SuperA::a()} should throw {E}
-//   var regex = /\{([^\}]+)\}/g
-//   var match;
-//   var t = [];
-//   while (match = regex.exec(arg)) {
-//     t.push(match[1]);
-//   }
-
-//   debug_dir(t);
-//   var sub = t[0];
-//   var sup = t[1];
-//   var ex = t[2];
-
-// //[ 'A::a()', 'SuperA::a()', 'E' ]
-
-//   //transform a single to a polym
-//   var col = new mongo.Collection(client, "pnodes");
-//   debug_dir({query: 1, ex: ex, node_path: sub});
-//   col.find({ex: ex, node_path: sub}, function(e,c) {
-//     if (e) throw new Error(e);
-//     else c.toArray(function(error, items) {
-//       if (items.length == 0) {
-//         //find a poly now, and prepend sub to its subs
-//         //if no poly found:
-//         col.insert({ex: ex, node_path: {base: sup, children: [sub]]}, function(error, docs) {
-//           debug_dir({inserted: docs});
-//           process.exit(0);
-//         });
-//       } else {
-//         for (var i = 0; i < items.length; i++) {
-//           items[i].node_path = {base: sup, children: [sub]} //node_path == sub
-//           debug_dir(items[i]);
-//           col.update({_id: items[i]._id}, items[i], {}, function(err) {
-//             if(err) throw new Error(err);
-//             process.exit(0);
-//           });
-//         }
-//       }
-//     });
-//   });
-
-//   process_it(t[2], t[1], [t[0], t[1]]);
-// }
-
-// function do_path(arg) {
-//   var regx = /\[([^\]]+)\]/g;
-//   var match;
-//   var triple = [];
-//   while (match = regx.exec(arg)) {
-//     triple.push(match[1]);
-//   }
-//   var spec = {ex: triple[1], invoke: triple[2], node: triple[0]};
-//   debug_dir({spec: spec});
-
-//   var ex = spec.ex;
-//   var invoke = spec.invoke;
-//   var node = spec.node;
-
-//   var col = new mongo.Collection(client, "pnodes");
-//   debug_dir({query: 1, ex: ex, node_path: invoke});
-//   col.find({ex: ex, node_path: invoke}, function(e,c) {
-
-//     if (e) throw new Error(e);
-
-//     else c.toArray(function(error, items) {
-//       if (items.length == 0) {
-//         console.log("NOT FOUND");
-//         col.insert({ex: ex, node_path: [node]}, function(error, docs) {
-//           if (error) throw new Error(e);
-//           debug_dir({inserted: docs});
-//           process.exit(0);
-//         });
-//       } else {
-//         console.log("FOUND");
-//         if (invoke == node) {
-//           console.log("invoke == node. do nothing")
-//           process.exit(0);
-//         } else {
-//           items[0].node_path.push(node);
-//           debug_dir(items);
-//           col.update({_id: items[0]._id}, items[0], {}, function(err) {
-//             if(err) throw new Error(err);
-//             process.exit(0);
-//           });
-//         }
-//       }
-//     });
-//   });
-// }
-
-// function start() {
-//   //doit("[A::a()] should throw [E] because it calls [ORIGIN]");
-//   //doit("[S::s()] should throw [E] because it calls [A::a()]");
-//   //doit("[S::g()] should throw [E] because it calls [S::s()]");
-//   //doit("[X::g()] should throw [E] because it calls [SuperA::a()]");
-//   //doit("{SuperA::a()} should throw {E}");
-
-//   //return;
-
-//   if (process.argv.length != 3) {
-//     console.log('missing arg');
-//     console.dir(process.argv);
-//     process.exit(0);
-//   } else {
-//     console.dir(process.argv);
-//     doit(process.argv[2]);
-//   }
-// }
