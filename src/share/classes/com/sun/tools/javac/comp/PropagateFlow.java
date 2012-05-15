@@ -268,10 +268,19 @@ public class PropagateFlow extends TreeScanner {
 
     public void visitNewClass(JCNewClass tree) {
         processMethod(lookupMethod(tree));
+        scan(tree.encl);
+        scan(tree.clazz);
+        //scan(tree.typeargs);
+        scan(tree.args);
+        scan(tree.def);
+
     }
 
-    public void visitApply(JCTree.JCMethodInvocation m) {
-        processMethod(lookupMethod(m));
+    public void visitApply(JCTree.JCMethodInvocation tree) {
+        processMethod(lookupMethod(tree));
+        //scan(tree.typeargs);
+        scan(tree.meth);
+        scan(tree.args);
     }
 
     public void processMethod(JCTree.JCMethodDecl found) {
