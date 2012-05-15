@@ -157,6 +157,8 @@ public class PropagateFlow extends TreeScanner {
     }
 
     JCTree.JCMethodDecl getSuperMethod(JCTree.JCClassDecl subclazz, Symbol sym) {
+        if (subclazz.extending == null) return null; //playing safe
+
         JCTree.JCClassDecl clazz = getClassForType(subclazz.extending.type);
 
         if (clazz == null) return null;
@@ -216,7 +218,7 @@ public class PropagateFlow extends TreeScanner {
 
         List<JCTree.JCMethodDecl> initials = this.targetsLeft.remove(this.targetsLeft.size()-1);
 
-        if (this.targetsLeft.size() == 0) { //single node
+        if (this.targetsLeft.isEmpty()) { //single node
             for (JCTree.JCMethodDecl m : initials) {
                 currentTree = new PathTree(m, p.thrown);
                 currentTree.setupThrowPath();
