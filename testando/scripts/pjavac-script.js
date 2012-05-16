@@ -126,10 +126,10 @@ function do_path(arg) {
       get_node(spec.ex, node_idx, function(node) {
         if (node) {
           debug("duplicated node...passing");
+          exit();
         } else {
-          create_node(spec.ex, node_idx)
+          create_node(spec.ex, node_idx, null, exit)
         }
-        exit();
       });
     } else {
       debug('looking for existing call_idx node...')
@@ -140,14 +140,12 @@ function do_path(arg) {
             debug('node_idx found')
             if (call_node) {
               debug('Adding call to existing node')
-              add_call(node, call_node._id);
-              exit();
+              add_call(node, call_node._id, exit);
             } else {
               debug('node found with no registered call node')
               if (node.ex != spec.ex) {
                 debug("Exceptions differ. Create new node for new exception")
-                create_node(spec.ex, node_idx)
-                exit();
+                create_node(spec.ex, node_idx, null, exit)
               } else {
                 debug("Exceptions are equal -- do nothing")
                 exit();
@@ -156,12 +154,10 @@ function do_path(arg) {
           } else {
             if (call_node) {
               debug('No node found. Creating one with callnode')
-              create_node(spec.ex, node_idx, call_node._id);
-              exit();
+              create_node(spec.ex, node_idx, call_node._id, exit);
             } else {
               debug('No node found. Creating one -- no callnode')
-              create_node(spec.ex, node_idx);
-              exit();
+              create_node(spec.ex, node_idx, null, exit);
             }
           }
         });
@@ -170,11 +166,12 @@ function do_path(arg) {
   });
 }
 
-function add_call(node, call_node_id) {
+function add_call(node, call_node_id, fn) {
   var col = new mongo.Collection(client, "trees");
   node.calls.push(call_node_id);
   col.update({_id: node._id}, node, {}, function(e) {
     debug("UPDATED");
+    fn();
   });
 }
 
@@ -190,7 +187,7 @@ function get_node(ex, idx, retf) {
   });
 }
 
-function create_node(ex, node_idx, call_node_idx) {
+function create_node(ex, node_idx, call_node_idx, fn) {
   var col = new mongo.Collection(client, "trees");
 
   var calls = call_node_idx ? [call_node_idx] : [];
@@ -198,6 +195,7 @@ function create_node(ex, node_idx, call_node_idx) {
   col.insert({ex: ex, node: node_idx, calls: calls}, function(error, docs) {
     if (error) throw new Error(error);
     debug_dir({inserted_node: docs});
+    fn();
   });
 }
 
