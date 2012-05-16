@@ -108,7 +108,12 @@ function do_path(arg) {
     triple.push(match[1]);
   }
   var spec = {ex: triple[1], call: triple[2], node: triple[0]};
-  //console.log({spec:spec});
+
+  if (spec.node.match(/anonymous/)) {
+    //throw new Error("anonymous class matched");
+    exit();
+    return;
+  }
 
   get_idx_ids(spec.call, spec.node, function(idx_ids) {
     var call_idx = idx_ids[0];
