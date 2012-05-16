@@ -27,7 +27,6 @@ public class ScriptPropagate {
         Symbol.ClassSymbol mcs = (Symbol.ClassSymbol) m.owner;
         Symbol.ClassSymbol cs = (Symbol.ClassSymbol) overrided.owner;
         s += mcs.fullname + "::" + m + "!} {!"+ cs.fullname + "::" + overrided + "!} should throw {!"+ct.tsym+"!}";
-        //System.out.println(s);
         execute(s);
     }
 
@@ -58,7 +57,6 @@ public class ScriptPropagate {
         } else {
             s += "ORIGIN!]";
         }
-        //System.out.println(s);
         execute(s);
     }
 

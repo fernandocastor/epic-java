@@ -297,7 +297,7 @@ public class PropagateFlow extends TreeScanner {
                 PathNode bk = currentTree.node;
                 currentTree.setRoot(found, this.nextTargets.get(0));
                 currentTree.setupThrowPath();
-                //a polym node might be the first (origin) node. exhaust it:
+                //a polym node might be the first (throw-origin) node. exhaust it:
                 if (this.nextTargets.size() > 1) {
                     for (int i = 1; i < this.nextTargets.size(); i++) {
                         currentTree.node = bk;
@@ -366,7 +366,7 @@ public class PropagateFlow extends TreeScanner {
 
         void setupThrowPath() {
             this.atLeastOnePathFound = true;
-            System.out.println("Found path: " + this.pathAsString(this.node));
+            //System.out.println("Found path: " + this.pathAsString(this.node));
 
             this.node.setupThrows(thrown);
         }
