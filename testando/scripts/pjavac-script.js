@@ -168,6 +168,12 @@ function do_path(arg) {
 
 function add_call(node, call_node_id, fn) {
   var col = new mongo.Collection(client, "trees");
+  for (var i = 0; i < node.calls.length; i++) {
+    if (node.calls[i].toString() == call_node_id.toString()) {
+      fn();
+      return;
+    }
+  }
   node.calls.push(call_node_id);
   col.update({_id: node._id}, node, {}, function(e) {
     debug("UPDATED");
