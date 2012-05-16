@@ -22,7 +22,7 @@ function set_debug(bool) {
     debug = new Function
   }
 }
-set_debug(true);
+set_debug(false);
 
 
 function exit() {
