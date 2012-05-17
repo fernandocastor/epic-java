@@ -1,34 +1,50 @@
 #!/usr/bin/env node
 
 /*
-index:
-  {"node" : 'S::s()', "tags" : [ "S::s()"]}
-  {"node" : { "base" : "SuperA::a()", "subs" : [ "A::a()" ] }, "tags" : [ "A::a()", "SuperA::a()" ] }
-pnodes:
-  {ex: 'E', path: [0, 3, 5]} //path: list of mongo ids, keying index collection
+hierarchy:
+  {type:"T", super: "S""}
 
+nodes:
+  {ex: 'E', node: "Foo::bar(int)", type:"foo", method:"bar(int"), call: [0,1,2]} //call: node._id
 */
 
 var mongo = require('mongodb');
+var winston = require('winston');
+var logger = new (winston.Logger);
+logger.setLevels(winston.config.syslog.levels);
 
-var debug_dir = null;
-var debug = null;
+// logger.add(winston.transports.Console, {colorize:true,timestamp:true});
+
+logger.add(winston.transports.File, {level: 'info',
+                                     filename:'/home/thiago/src/java_msc/testando/scripts/log.log',
+                                     maxsize:1048576});
+
+
+var d = null;
 function set_debug(bool) {
   if (bool) {
-    debug_dir = console.dir;
-    debug = console.log;
+    d = function() {
+      logger.info.apply(logger,arguments);
+      setTimeout(function() {
+        logger.transports.file.flush();
+      }, 0);
+    }
   } else {
-    debug_dir = new Function
-    debug = new Function
+    d = {info: new Function};
   }
 }
-set_debug(false);
 
+set_debug(true);
 
 function exit() {
-  process.exit(0);
+  d("------------------ END ---------------\n\n");
+  client.close();
 }
 
+function raise(str) {
+  logger.error(str);
+  exit();
+}
 
 var db = new mongo.Db("java_msc", new mongo.Server("localhost", 27017));
 var client;
@@ -38,19 +54,70 @@ db.open(function(error, c) {
 });
 
 
+function testh() {
+  //doit("[*testando.A::a()*] should throw [*testando.E*] because it calls [*ORIGIN*]")
+
+  //doit("{*testando.A::a()*} {*testando.SuperA::a()*} should throw {*testando.E*}");
+
+  //doit("{*testando.SuperA::a()*} {*testando.SuperAA::a()*} should throw {*testando.E*}")
+  //doit("{*testando.A::a()*} {*testando.SuperA::a()*} should throw {*testando.E*}");
+
+  //doit("{*testando.SuperAA::a()*} {*testando.SuperSuper::a()*} should throw {*testando.E*}");
+  //doit("{*testando.SuperA::a()*} {*testando.SuperAA::a()*} should throw {*testando.E*}");
+  //doit("{*testando.A::a()*} {*testando.SuperA::a()*} should throw {*testando.E*}");
+}
+
 // propagating E: {A <: SuperA}::a() -> S::s();
 // propagating E: {A <: SuperA}::a() -> Z::z();
 function test1() {
-  //doit("[A::a()] should throw [E] because it calls [ORIGIN]");
-  //doit("{A::a()} {SuperA::a()} should throw {E}");
-  //doit("[S::s()] should throw [E] because it calls [SuperA::a()]");
-  //doit("[Z::z()] should throw [E] because it calls [SuperA::a()]");
+
+  //doit("[*A::a()*] should throw [*E*] because it calls [*ORIGIN*]");
+     /* [{node:A::a(), calls:[]}] */
+     //propagating E: A::a();
+
+
+  //doit("{*A::a()*} {*SuperA::a()*} should throw {*E*}");
+    /* [{node:A::a(), calls:[]}, {node:SuperA::a, calls:[]}]  || [{type:A, super:SuperA, meth: a()}]*/
+
+    ///*overriding*/ propagating E: {A<:SuperA}::a();
+    //propagating E: A::a();
+
+
+  //doit("[*B::b()*] should throw [*E*] because it calls [*A::a()*]");
+    /* [{node:A::a(), calls:[]}, {node:SuperA::a, calls:[],virtual:true}, {node:B::b(), calls:[<A::a>]]}
+       || [{type:A, super:SuperA, meth: a()}]*/
+    ///*overriding*/ propagating E: {A<:SuperA}::a();
+    //propagating E: A::a() -> B::b();
+
+
+  //doit("[*S::s():*] should throw [*E*] because it calls [*SuperA::a()*]");
+    /* [{node:A::a(), calls:[]}, {node:SuperA::a, calls:[],virtual:false}, {node:B::b(), calls:[<A::a>]], {node:S::s, calls:<SuperA>}]
+       || [{type:A, super:SuperA, meth: a()}]*/
+    //!-- no more overriding needed
+    //propagating E: {A<:SuperA}::a() -> S::s();
+    //propagating E: A::a() -> B::b();
+
+  //doit("[*Z::z()*] should throw [*E*] because it calls [*SuperA::a()*]");
+    /* [{node:A::a(), calls:[]}, {node:SuperA::a, calls:[],virtual:false}, {node:B::b(), calls:[<A::a>]], {node:S::s, calls:<SuperA>},
+        {node:Z::z, calls:<SuperA>}
+       || [{type:A, super:SuperA, meth: a()}]*/
+    //!-- no more overriding needed
+    //propagating E: {A<:SuperA}::a() -> S::s();
+    //propagating E: A::a() -> B::b();
+    //propagating E: {A<:SuperA}::a() -> Z::z();
 }
 
 function test2() {
-  //doit("[A::a()] should throw [E] because it calls [ORIGIN]");
-  //doit("[A::b()] should throw [E] because it calls [A::a()]");
-  //doit("[A::c()] should throw [E] because it calls [A::a()]");
+  //doit("[*A::a()*] should throw [*E*] because it calls [*ORIGIN*]");
+  //doit("[*B::b()*] should throw [*E*] because it calls [*A::a()*]");
+  //doit("[*C::c()*] should throw [*E*] because it calls [*B::b()*]");
+  //doit("[*D::d()*] should throw [*E*] because it calls [*B::b()*]");
+
+  //doit("{*C::c()*} {*SuperC::c()*} should throw {*E*}");
+  //doit("{*SubB::b()*} {*B::b()*} should throw {*E*}");
+
+  //doit("[*SuperC::c()*] should throw [*E*] because it calls [*D::d()*]");
+
   //doit("[A::s()] should throw [E] because it calls [A::a()]");
   //doit("[A::d()] should throw [E] because it calls [A::s()]");
   //doit("[A::f()] should throw [E] because it calls [A::c()]");
@@ -60,8 +127,8 @@ function test2() {
 }
 
 function start() {
-  //return exit();
-  //return test1();
+  //return process.exit(0);
+  return test2();
 
   if (process.argv.length != 3) {
     console.log('missing arg');
@@ -74,6 +141,8 @@ function start() {
 
 
 function doit(arg) {
+  d(" ============== INIT ============= ");
+  d("input: " + arg);
   if (arg[0] == '{') {
     do_super(arg);
   } else {
@@ -84,7 +153,7 @@ function doit(arg) {
 function do_super(arg) {
 //  doit("{A::a()} {SuperA::a()} should throw {E}");
 
-  var regex = /\{!([^!]+)\!}/g
+  var regex = /\{\*([^\*]+)\*}/g
   var match;
   var t = [];
   while (match = regex.exec(arg)) {
@@ -93,175 +162,199 @@ function do_super(arg) {
 
 //[ 'A::a()', 'SuperA::a()', 'E' ]
   var spec = {ex: t[2], base: t[1], sub: t[0]};
-  //console.log({spec:spec});
+  d({do_super: spec})
 
-  update_idx(spec.sub, spec.base, exit);
+  update_hierarchy(spec.ex, spec.sub, spec.base, function() {
+    create_node(spec.ex, spec.base, null, true,exit);
+  });
 }
 
 function do_path(arg) {
   //doit("[S::s()] should throw [E] because it calls [A::a()]");
 
-  var regx = /\[!([^!]+)!\]/g;
+  var regx = /\[\*([^\*]+)\*\]/g;
   var match;
   var triple = [];
   while (match = regx.exec(arg)) {
     triple.push(match[1]);
   }
   var spec = {ex: triple[1], call: triple[2], node: triple[0]};
+  d({do_path: spec})
 
   if (spec.node.match(/anonymous/)) {
-    //throw new Error("anonymous class matched");
+    d("anonymous found");
     exit();
     return;
   }
-
-  get_idx_ids(spec.call, spec.node, function(idx_ids) {
-    var call_idx = idx_ids[0];
-    var node_idx = idx_ids[1];
-
-    debug_dir(idx_ids);
-
-    if (!call_idx) { //[ORIGIN]
-      debug('creating node that calls ORIGIN')
-      get_node(spec.ex, node_idx, function(node) {
+  if (spec.call == "ORIGIN") {
+    d('creating node that calls ORIGIN')
+    get_node(spec.ex, spec.node, function(node) {
+      if (node) {
+        d("duplicated node...passing");
+        exit();
+      } else {
+        create_node(spec.ex, spec.node, null, false,exit)
+      }
+    });
+  } else {
+    d('looking for exitsing call node...')
+    get_node(spec.ex, spec.call, function(call_node) {
+      d('looking for existing node ...')
+      get_node(spec.ex, spec.node, function(node) {
         if (node) {
-          debug("duplicated node...passing");
-          exit();
-        } else {
-          create_node(spec.ex, node_idx, null, exit)
-        }
-      });
-    } else {
-      debug('looking for existing call_idx node...')
-      get_node(spec.ex, call_idx, function(call_node) {
-        debug('looking for existing node_idx node...')
-        get_node(spec.ex, node_idx, function(node) {
-          if (node) {
-            debug('node_idx found')
-            if (call_node) {
-              debug('Adding call to existing node')
-              add_call(node, call_node._id, exit);
-            } else {
-              debug('node found with no registered call node')
-              if (node.ex != spec.ex) {
-                debug("Exceptions differ. Create new node for new exception")
-                create_node(spec.ex, node_idx, null, exit)
-              } else {
-                debug("Exceptions are equal -- do nothing")
-                exit();
-              }
-            }
+          d('node found')
+          if (call_node) {
+              d('Adding call to existing node')
+              add_call(node, call_node, exit);
           } else {
-            if (call_node) {
-              debug('No node found. Creating one with callnode')
-              create_node(spec.ex, node_idx, call_node._id, exit);
+            d('node found with no registered call node')
+            if (node.ex != spec.ex) {
+              d("Exceptions differ. Create new node for new exception")
+              create_node(spec.ex, spec.node, null, false, exit)
             } else {
-              debug('No node found. Creating one -- no callnode')
-              create_node(spec.ex, node_idx, null, exit);
+              d("Exceptions are equal -- do nothing")
+              exit();
             }
           }
-        });
+        } else {
+          if (call_node) {
+            d('No node found. Creating one with callnode')
+            d({callnode: call_node})
+            create_node(spec.ex, spec.node, call_node, false, function() {
+              call_node.virtual = false;
+              update_node(call_node, exit);
+            });
+          } else {
+            d('No node found. Creating one -- no callnode')
+            create_node(spec.ex, spec.node, null, false, exit);
+          }
+        }
       });
-    }
-  });
+    });
+  }
 }
 
-function add_call(node, call_node_id, fn) {
+function add_call(node, call_node, fn) {
   var col = new mongo.Collection(client, "trees");
   for (var i = 0; i < node.calls.length; i++) {
-    if (node.calls[i].toString() == call_node_id.toString()) {
+    if (node.calls[i].toString() == call_node._id.toString()) {
+      d("call already added. Skipping...");
       fn();
       return;
     }
   }
-  node.calls.push(call_node_id);
+  node.calls.push(call_node._id);
   col.update({_id: node._id}, node, {}, function(e) {
-    debug("UPDATED");
-    fn();
+    if (e) throw new Error(e);
+    d("node updated with new call");
+    call_node.virtual = false;
+    col.update({_id: call_node._id}, call_node,{}, function(e) {
+      if (e) throw new Error(e);
+      d("callnode virtual field updated");
+      fn();
+    })
   });
 }
 
 function get_node(ex, idx, retf) {
   var col = new mongo.Collection(client, "trees");
-
+  d({lookup: {ex: ex, node: idx}})
   col.find({ex: ex, node: idx}, function(e, c) {
-      if (e) throw new Error(e);
-      else c.toArray(function(error, items) {
-        if (items.length > 1) throw "more than one node throwing " + ex + " found";
-        retf( (items.length == 1) ? items[0] : null );
-      });
+    if (e) throw new Error(e);
+    else c.toArray(function(error, items) {
+      if (items.length > 1) raise("more than one node throwing " + ex + " found");
+      retf( (items.length == 1) ? items[0] : null );
+    });
   });
 }
 
-function create_node(ex, node_idx, call_node_idx, fn) {
+function create_node(ex, node, call_node, virtual, fn) {
   var col = new mongo.Collection(client, "trees");
 
-  var calls = call_node_idx ? [call_node_idx] : [];
+  var calls = call_node ? [call_node._id] : [];
 
-  col.insert({ex: ex, node: node_idx, calls: calls}, function(error, docs) {
-    if (error) throw new Error(error);
-    debug_dir({inserted_node: docs});
-    fn();
+  col.find({ex: ex, node: node}, function(err, c) {
+    if (err) throw new Error(err);
+    else c.toArray(function(error, items) {
+      if (items.length == 0) {
+        col.insert({ex: ex, node: node, calls: calls, virtual:virtual}, function(error, docs) {
+          if (error) throw new Error(error);
+          d({inserted_node: docs});
+          fn();
+        });
+      } else {
+        d("Trying to add duplicated node. skipping");
+        fn();
+      }
+    });
   });
 }
 
-function get_idx_ids() {
-  var sigs = [];
-  for (var i = 0; i < arguments.length-1; i++) {
-    sigs.push(arguments[i]);
-  }
-  fret = arguments[arguments.length-1];
 
-  var ret = []
-  for (var i = 0; i < sigs.length; i++) {
-    if (sigs[i] == 'ORIGIN') {
-      ret.push(null);
-    } else {
-      get_or_create_id(sigs[i], function(id) {
-        //debug("pushing ID: " + id);
-        ret.push(id);
-        if (ret.length == sigs.length) fret(ret);
+
+function update_hierarchy(ex, sub, base, fn) {
+  var col = new mongo.Collection(client, "hierarchy");
+
+  function insert_child(parent) {
+    d({doing_relationship: {sub: sub, parent:parent}})
+    col.find({ex:ex, node: sub}, function(e,c) {
+      if (e) throw new Error(e);
+      else c.toArray(function(error, child) {
+        if (child.length == 0) {
+          d("no sub found. inserting new node for sub...")
+          col.insert({ex: ex, node:sub, parent:parent._id}, function(error,docs) {
+            if (error) throw new Error(error);
+            d({inserted_sub: docs});
+            fn();
+          });
+        } else if (child.length == 1) {
+          d({found_sub: child[0]})
+          if (child[0].parent == null) {
+            child[0].parent = parent._id;
+            col.update({_id:child[0]._id}, child[0], {}, function(e) {
+              d({updated_child: child[0]});
+              fn();
+            });
+          } else if (child[0].parent.toString() == parent._id.toString()) {
+            d("Child is already subclass of its parent. bail")
+            fn();
+          } else {
+             raise("BUG: trying to change class/subclass relationship");
+          }
+        } else {
+          fn();
+        }
       });
-    }
+    });
   }
-}
 
-function get_or_create_id(sig, ret) {
-  var col = new mongo.Collection(client, "idx");
-  col.find({tags: sig}, function(e,c) {
+  col.find({ex:ex, node: base}, function(e,c) {
     if (e) throw new Error(e);
-    else c.toArray(function(error, items) {
-      if (items.length == 0) {
-        debug('creating id for ' + sig);
-        col.insert({node: sig, tags: [sig]}, function(e,docs) {
-          if (e) throw new Error(e);
-          ret(docs[0]._id);
+    else c.toArray(function(error, parents) {
+      d({total_parents: parents})
+      if (parents.length > 1) {
+        raise("More than one node found in hierarchy");
+      } else if (parents.length == 0) {
+        col.insert({ex: ex, node: base, parent:null}, function(err, docs) {
+          if (error) throw new Error(error);
+          d({new_parent_inserted: docs});
+          insert_child(docs[0]);
         });
-      } else {
-        debug('found id ' + items[0]._id);
-        ret(items[0]._id);
+      } else { //parents.length == 1
+        d({found_parent: parents});
+        insert_child(parents[0]);
       }
-    });
-  })
+    })
+  });
 }
 
-function update_idx(sub, base, retf) {
-  var col = new mongo.Collection(client, "idx");
-  col.find({tags: sub}, function(e,c) {
-    if (e) throw new Error(e);
-    else c.toArray(function(error, items) {
-      if (typeof items[0].node == 'string') {
-        items[0].node = {base: clazz(base), subs: [clazz(sub)], meth: meth(sub)}
-        items[0].tags = [sub, base];
-      } else {
-        items[0].node.subs.push(clazz(sub));
-        items[0].tags.push(sub);
-      }
-      col.update({_id: items[0]._id}, items[0], {}, function(err) {
-        if(err) throw new Error(err);
-        retf();
-      });
-    });
+function update_node(call_node, fn) {
+  var col = new mongo.Collection(client, "trees");
+
+  col.update({_id: call_node._id}, call_node,{}, function(e) {
+      if (e) throw new Error(e);
+      d("callnode virtual field updated");
+      fn();
   });
 }
 
