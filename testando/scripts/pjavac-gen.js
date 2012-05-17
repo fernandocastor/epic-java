@@ -114,9 +114,9 @@ function process_virtuals() {
 
 function mark_polynode(ex, str) {
   for (var i = 0; i < poly_nodes.length; i++) {
-    if (poly_nodes[i] == str) return false;
+    if (poly_nodes[i].node == str && poly_nodes[i].ex == ex) return false;
   }
-  poly_nodes.push(str);
+  poly_nodes.push({node:str,ex:ex});
   return true;
 }
 
