@@ -8,6 +8,8 @@ nodes:
   {ex: 'E', node: "Foo::bar(int)", type:"foo", method:"bar(int"), call: [0,1,2]} //call: node._id
 */
 
+if (process.env["MSC_IGNORE"]) process.exit(0)
+
 var mongo = require('mongodb');
 var winston = require('winston');
 var logger = new (winston.Logger);

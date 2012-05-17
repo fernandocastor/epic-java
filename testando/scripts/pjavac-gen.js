@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+if (process.env["MSC_IGNORE"]) process.exit(0)
 
 var mongo = require('mongodb');
 var winston = require('winston');
