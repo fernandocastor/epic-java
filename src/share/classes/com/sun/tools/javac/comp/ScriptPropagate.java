@@ -90,8 +90,7 @@ public class ScriptPropagate {
         }
         lst.add(s);
 
-        System.out.println(s);
-        if (true) return;
+        //System.out.println(s);
         try {
             String[] cmd = {"pjavac-script", s};
 
