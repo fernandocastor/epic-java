@@ -1,6 +1,5 @@
 package com.sun.tools.javac.comp;
 
-import com.sun.tools.javac.code.Kinds;
 import com.sun.tools.javac.code.Scope;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Type;
@@ -16,8 +15,22 @@ import com.sun.tools.javac.util.Log;
 import com.sun.tools.javac.util.Name;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedMap;
+import java.util.TreeMap;
+
+class UnrelatedClassException extends Exception {
+    private static final long serialVersionUID = 1;
+    public Symbol first;
+    public Symbol second;
+    UnrelatedClassException(Symbol f, Symbol s) {
+        this.first = f;
+        this.second = s;
+    }
+
+}
 
 public class PropagateFlow extends TreeScanner {
+
     //every tree has this thing...
     protected static final Context.Key<PropagateFlow> pflowKey =
         new Context.Key<PropagateFlow>();
@@ -71,6 +84,10 @@ public class PropagateFlow extends TreeScanner {
                     JCTree.JCPropagate p = (JCTree.JCPropagate)e.tree;
                     log.useSource(e.toplevel.sourcefile);
                     process(p);
+                } catch(UnrelatedClassException ex) {
+                    log.error(currentPropagate.pos(),
+                            "propagate.unrelated.class",
+                            ex.first, ex.second);
                 } catch(Exception ex) {
                     ex.printStackTrace();
                     //report unable to build paths
@@ -93,7 +110,57 @@ public class PropagateFlow extends TreeScanner {
         return lst;
     }
 
-    List<JCTree.JCMethodDecl> lookupMethods(JCTree.JCPropagateMethodPolym m) {
+    public int hierarchyDistance(JCTree.JCMethodDecl sub, JCTree.JCMethodDecl base)
+            throws UnrelatedClassException{
+        int i = 0;
+        Type subtype = ((Type.ClassType)sub.sym.owner.type).supertype_field;
+        while (true) {
+            if (subtype == Type.noType) throw new UnrelatedClassException(sub.sym.owner, base.sym.owner);
+            if (subtype == base.sym.owner.type) {
+                return i;
+            }
+            i++;
+            subtype = ((Type.ClassType)subtype).supertype_field;
+        }
+    }
+
+    public List<JCTree.JCMethodDecl> sortHierarchy(List<JCTree.JCMethodDecl> lst)
+    throws UnrelatedClassException {
+        //0 is base
+        //sort rest
+        SortedMap<Integer, List<JCTree.JCMethodDecl>> map
+                = new TreeMap<Integer, List<JCTree.JCMethodDecl>>();
+
+        List<JCTree.JCMethodDecl> ret = new ArrayList<JCTree.JCMethodDecl>();
+        for (int i = 1; i < lst.size(); i++) {
+            JCTree.JCMethodDecl m = lst.get(i);
+            int distance = hierarchyDistance(m, lst.get(0));
+            List<JCTree.JCMethodDecl> l = map.get(distance);
+            if (l == null) {
+                l = new ArrayList<JCTree.JCMethodDecl>();
+            }
+            if (l.contains(m)) {
+                  log.error(this.currentPropagate.pos(),
+                        "propagate.duplicated.class",
+                        m.sym.owner);
+            } else {
+                l.add(m);
+            }
+            map.put(distance, l);
+        }
+        for (SortedMap.Entry<Integer, List<JCTree.JCMethodDecl>> entry : map.entrySet()) {
+            for (JCTree.JCMethodDecl m : entry.getValue()) {
+                ret.add(m);
+            }
+        }
+
+        ret.add(0, lst.get(0));
+        return ret;
+    }
+
+    List<JCTree.JCMethodDecl> lookupMethods(JCTree.JCPropagateMethodPolym m)
+        throws UnrelatedClassException {
+
         List<JCTree.JCMethodDecl> ret = new ArrayList<JCTree.JCMethodDecl>();
         for(JCTree.JCExpression s : m.selectors) {
             JCTree.JCFieldAccess f = (JCTree.JCFieldAccess) s;
@@ -110,7 +177,7 @@ public class PropagateFlow extends TreeScanner {
                 ret.add(method);
             }
         }
-        return ret.isEmpty() ? null : ret;
+        return ret.isEmpty() ? null : sortHierarchy(ret);
     }
 
     JCTree.JCMethodDecl lookupMethod(JCNewClass nclass) {
@@ -185,8 +252,12 @@ public class PropagateFlow extends TreeScanner {
     private List<List<JCTree.JCMethodDecl>> targetsLeft;
     private List<JCTree.JCMethodDecl> nextTargets;
     private PathTree currentTree;
+    private JCTree.JCPropagate currentPropagate;
 
-    public void process(JCTree.JCPropagate p) {
+    public void process(JCTree.JCPropagate p)
+    throws UnrelatedClassException {
+        this.currentPropagate = p;
+
         this.targetsLeft = new ArrayList<List<JCTree.JCMethodDecl>>();
 
         for(JCTree m : p.nodes) {
@@ -219,12 +290,15 @@ public class PropagateFlow extends TreeScanner {
         List<JCTree.JCMethodDecl> initials = this.targetsLeft.remove(this.targetsLeft.size()-1);
 
         if (this.targetsLeft.isEmpty()) { //single node
-            for (JCTree.JCMethodDecl m : initials) {
-                currentTree = new PathTree(m, p.thrown);
+            if (initials.size() == 1) {
+                currentTree = new PathTree(initials.get(0), p.thrown);
                 currentTree.setupThrowPath();
-                //m.thrown = m.thrown.append(p.thrown);
-                //m.type.asMethodType().thrown =
-                //        m.type.asMethodType().thrown.append(p.thrown.type);
+            } else {
+                for (int i = 1; i < initials.size(); i++) {
+                    currentTree = new PathTree(initials.get(i), initials.get(0),p.thrown);
+                    currentTree.setupThrowPath();
+
+                }
             }
         } else {
             this.nextTargets = this.targetsLeft.remove(this.targetsLeft.size()-1);
@@ -261,10 +335,7 @@ public class PropagateFlow extends TreeScanner {
     }
 
     boolean matchTargets(JCTree.JCMethodDecl m) {
-        for (JCTree.JCMethodDecl md : this.nextTargets) {
-            if (m.sym == md.sym) return true;
-        }
-        return false;
+        return m.sym == this.nextTargets.get(0).sym;
     }
 
     public void visitNewClass(JCNewClass tree) {
