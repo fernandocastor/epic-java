@@ -313,6 +313,47 @@ public class Pretty extends JCTree.Visitor {
         return t.getTag() == JCTree.VARDEF && (((JCVariableDecl) t).mods.flags & ENUM) != 0;
     }
 
+    public void visitPropagateMethod(JCPropagateMethodSimple that) {
+        try {
+            print(that.selector.sym.owner.toString());
+            print("::");
+            print(that.sym.name.toString() + "(" +
+                    that.params.toString() + ")");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+
+    }
+
+    public void visitPropagateMethod(JCPropagateMethodPolym that) {
+        try {
+            print("{");
+            String v = "";
+            for (JCExpression sub : that.subs) {
+                print(v + sub.toString());
+                v = ", ";
+            }
+            print(" <: " +that.sup.toString());
+            print("}::");
+            print(that.selectors.head.toString());
+            print(";");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    public void printPropagate(JCPropagate prop) throws IOException {
+        print("propagating ");
+        print(prop.thrown.toString());
+        print(": ");
+        String arrow = "";
+        for(JCTree t: prop.nodes) {
+            print(arrow + t.toString());
+            arrow = " => ";
+        }
+        print(";");
+    }
+
     /** Print unit consisting of package clause and import statements in toplevel,
      *  followed by class definition. if class definition == null,
      *  print all definitions in toplevel.
@@ -377,6 +418,13 @@ public class Pretty extends JCTree.Visitor {
     public void visitTopLevel(JCCompilationUnit tree) {
         try {
             printUnit(tree, null);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+    public void visitPropagate(JCPropagate tree) {
+        try {
+            printPropagate(tree);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

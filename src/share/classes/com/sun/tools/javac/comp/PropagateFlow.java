@@ -114,6 +114,7 @@ public class PropagateFlow extends TreeScanner {
             }
         }
         checkOverriding();
+        ScriptPropagate.logPaths();
     }
 
     void checkOverriding() {
@@ -480,7 +481,9 @@ public class PropagateFlow extends TreeScanner {
 
         void setupThrowPath() {
             this.atLeastOnePathFound = true;
-            //System.out.println("Found path: " + this.pathAsString(this.node));
+            //ScriptPropagate.addPath(this.currentPropagate.toString(), this.pathAsString(this.node));
+            System.out.println("Found path: " + this.pathAsString(this.node));
+
 
             this.node.setupThrows(thrown);
         }

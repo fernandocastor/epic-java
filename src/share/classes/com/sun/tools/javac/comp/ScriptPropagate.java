@@ -17,7 +17,9 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  *
@@ -27,6 +29,33 @@ public class ScriptPropagate {
     public static List<String> lst = new ArrayList<String>();
     public static List<String> hierarchy_first = new ArrayList<String>();
     public static List<String> hierarchy_second = new ArrayList<String>();
+
+    public static HashMap<String, List<String>> paths = new HashMap<String,List<String>>();
+    public static void addPath(String prop, String path) {
+        List<String> lst;
+        if (paths.containsKey(prop)) {
+            lst = paths.get(prop);
+        } else {
+            lst  = new ArrayList<String>();
+        }
+        lst.add(path);
+        paths.put(prop, lst);
+    }
+
+    public static void logPaths() {
+        String out = "====================================\n";
+        for (Map.Entry<String, List<String>> entry : paths.entrySet()) {
+            out += ("[paths for]: " + entry.getKey() + "\n");
+            for (String s : entry.getValue()) {
+                out += "* " + s;
+            }
+            out += "\n-----------------------------\n";
+        }
+
+        out += "=======================================\n\n";
+        dumpPaths(out);
+        paths = new HashMap<String,List<String>>();
+    }
 
     public static void logPropagateError(Symbol.MethodSymbol m, Symbol.MethodSymbol overrided, Type.ClassType ct) {
         Symbol.ClassSymbol mcs = (Symbol.ClassSymbol) m.owner;
@@ -82,9 +111,26 @@ public class ScriptPropagate {
         execute(s);
     }
 
+    static private void dumpPaths(String s) {
+        //System.out.println(s);
+        try {
+            String[] cmd = {"pjavac-log-paths", s};
+
+            Runtime runtime = Runtime.getRuntime();
+            Process process = runtime.exec(cmd);
+            InputStream is = process.getInputStream();
+            InputStreamReader isr = new InputStreamReader(is);
+            BufferedReader br = new BufferedReader(isr);
+            String line;
+            while ((line = br.readLine()) != null) {
+                System.out.println(line);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     static private void execute(String s) {
-
-
         for (String old : lst) {
             if(old.equals(s)) return;
         }
