@@ -1,0 +1,4 @@
+#!/bin/bash
+
+
+echo -e "$@" >> /home/thiago/src/java_msc/testando/scripts/paths.log

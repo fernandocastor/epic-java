@@ -40,7 +40,42 @@ set_debug(true);
 
 function exit() {
   d("------------------ END ---------------\n\n");
-  client.close();
+  store_arg(function() {
+    client.close();
+  });
+}
+
+function store_arg(fn) {
+  var colidx = new mongo.Collection(client, "idx");
+
+  function insert_arg(idx) {
+    var col = new mongo.Collection(client, "args");
+    col.insert({arg:argument, num:idx}, function(e) {
+      if (e) throw new Error(e);
+      fn();
+    });
+  }
+
+  colidx.find({}, function(err, c) {
+    if (err) throw new Error(err);
+    else c.toArray(function(error, items) {
+      var idx;
+      if (items.length == 1) {
+        idx = ++items[0].num;
+        colidx.update({_id:items[0]._id}, items[0], {}, function(e) {
+          if (e) throw new Error(e);
+          insert_arg(idx);
+        });
+      } else {
+        idx = 0;
+        var col = new mongo.Collection(client, "idx");
+        colidx.insert({num:idx}, function(e) {
+          if (e) throw new Error(e);
+          insert_arg(idx);
+        });
+      }
+    });
+  });
 }
 
 function raise(str) {
@@ -143,6 +178,7 @@ function start() {
 
 
 function doit(arg) {
+  argument = arg;
   d(" ============== INIT ============= ");
   d("input: " + arg);
   if (arg[0] == '{') {
