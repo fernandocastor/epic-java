@@ -759,7 +759,7 @@ public class Attr extends JCTree.Visitor {
                 attribTree(tree, env, pkind, pt);
                 return TreeInfo.symbol(tree);
             case JCTree.IDENT:
-                attribTree(tree, env, TYP | PCK, pt);
+                attribTree(tree, env, TYP, pt);
                 return TreeInfo.symbol(tree);
             default:
                 System.out.println("++BUG");
