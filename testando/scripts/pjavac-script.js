@@ -163,6 +163,7 @@ function test2() {
   //doit("[A::g()] should throw [E] because it calls [A::f()]");
 }
 
+var argument = null
 function start() {
   //return process.exit(0);
   return test2();
