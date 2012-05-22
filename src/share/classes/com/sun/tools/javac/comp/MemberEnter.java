@@ -532,16 +532,14 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         //in Attr.java visitPropagate()
         todo.append(env.dup(tree));
 
-        //setup environment to workaround
-        //access policy
-        //(thrown might be private from where we stand in env)
+        int skind = VAL | TYP;
         Env<AttrContext> privEnv =
             env.dup(tree, env.info.dup());
-        Symbol classSymbol = attr.dirtyPreAttrib(tree.thrown, privEnv, VAL | TYP, Infer.anyPoly);
-        privEnv.outer = env;
-        privEnv.info.isSelfCall = false;
-        privEnv.info.lint = null;
-        privEnv.enclClass.sym = (ClassSymbol)classSymbol; //argh
+
+        //setup environment to workaround
+        //access policy
+        //(thrown type might be private from where we stand in env)
+        attr.dirtyPreAttrib(tree.thrown, privEnv, env, skind);
 
         //load symbol for the thrown type
         /*Type exc = */attr.attribType(tree.thrown, privEnv);
@@ -562,7 +560,25 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         //load symbol for the selector
         memberEnter(tree.selector, env);
         //load symbol for the parameters
-        memberEnter(tree.params, env);
+
+        int skind = VAL | TYP;
+        Env<AttrContext> privEnv =
+            env.dup(tree, env.info.dup());
+
+        //setup environment to workaround
+        //access policy
+        //(thrown type might be private from where we stand in env)
+
+        ClassSymbol bkClass = env.enclClass.sym;
+        PackageSymbol bkPkg = env.toplevel.packge;
+
+        for (List<? extends JCTree> l = tree.params; l.nonEmpty(); l = l.tail) {
+            attr.dirtyPreAttrib(l.head, privEnv, env, skind);
+            memberEnter(l.head, env);
+            env.enclClass.sym = bkClass;
+            env.toplevel.packge = bkPkg;
+        }
+
     }
 
     // process the non-static imports and the static imports of types.

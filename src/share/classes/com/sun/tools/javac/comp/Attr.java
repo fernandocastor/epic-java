@@ -732,13 +732,54 @@ public class Attr extends JCTree.Visitor {
     }
 
 
-    public Symbol dirtyPreAttrib(JCTree tree, Env<AttrContext> env, int pkind, Type pt) {
+    public Symbol dirtyPreAttrib(JCTree tree, Env<AttrContext> privEnv, Env<AttrContext> e, int skind) {
+        //we need to enter the scope of the tree
+        //so we don't get access errors on private parts
+        //dirtyness ahead!!
+        //PackageSymbol bk = e.toplevel.packge;
+        Symbol classSymbol = dirtyAttrib(tree, privEnv, skind, Infer.anyPoly);
+//        if (classSymbol != null) {
+//            privEnv.enclClass.sym = (ClassSymbol)classSymbol; //argh
+//        }
+
+        //creating an env scoped on classSymbol
+        //copied from Enter::classEnv()
+        privEnv.outer = e;
+        privEnv.info.isSelfCall = false;
+        privEnv.info.lint = null;
+        //is this being called twiece? here and on dirtyAttrib?
+        //attribTree(tree, privEnv, skind, Infer.anyPoly);
+        //e.toplevel.packge = bk;
+        return classSymbol;
+    }
+
+    public Symbol dirtyAttrib(JCTree tree, Env<AttrContext> e, int pkind, Type pt) {
+        Symbol s;
+
+        int skind = 0;
         switch (tree.getTag()) {
+            case JCTree.VARDEF:
+                JCVariableDecl v = (JCVariableDecl)tree;
+                s = dirtyAttrib(v.vartype, e, pkind, pt);
+                if (s != null) { //s might be null if vartype is primitive
+                    e.info.scope = new Scope(s);
+                    if (s.kind == Kinds.TYP)
+                        e.enclClass.sym = (ClassSymbol)s; //argh
+                    else
+                        e.toplevel.packge = (PackageSymbol)s;
+                }
+                return TreeInfo.symbol(v.vartype);
+            case JCTree.TYPEAPPLY:
+                JCTypeApply t = (JCTypeApply)tree;
+                dirtyAttrib(t.clazz, e, pkind, pt);
+                for( JCTree arg: t.arguments) {
+                    dirtyAttrib(arg, e, pkind, pt);
+                }
+                return TreeInfo.symbol(tree);
             case JCTree.SELECT:
 
                 //from visitSelect():
                 JCFieldAccess f = (JCFieldAccess)tree;
-                int skind = 0;
                 if (f.name == names._this || f.name == names._super ||
                     f.name == names._class)
                 {
@@ -749,20 +790,24 @@ public class Attr extends JCTree.Visitor {
                     if ((pkind & (VAL | MTH)) != 0) skind = skind | VAL | TYP;
                 }
                 //
+                s = dirtyAttrib(f.selected, e, skind, pt);
+                e.info.scope = new Scope(s);
 
-                Symbol s = dirtyPreAttrib(f.selected, env, skind, pt);
-                env.info.scope = new Scope(s);
                 if (s.kind == Kinds.TYP)
-                    env.enclClass.sym = (ClassSymbol)s; //argh
+                    e.enclClass.sym = (ClassSymbol)s; //argh
                 else
-                    env.toplevel.packge = (PackageSymbol)s;
-                attribTree(tree, env, pkind, pt);
+                    e.toplevel.packge = (PackageSymbol)s;
+                attribTree(tree, e, pkind, pt);
+
                 return TreeInfo.symbol(tree);
             case JCTree.IDENT:
-                attribTree(tree, env, TYP | PCK, pt);
+                attribTree(tree, e, pkind, pt);
+                return TreeInfo.symbol(tree);
+            case JCTree.TYPEIDENT: //primitive type
+                attribTree(tree, e, pkind, pt);
                 return TreeInfo.symbol(tree);
             default:
-                throw new RuntimeException("++BUG: Attr::dirtyPreAttrib");
+                throw new RuntimeException("++BUG: Attr::dirtyPreAttrib: " + tree.getTag() + " + " + tree.toString()) ;
         }
     }
 
@@ -776,31 +821,14 @@ public class Attr extends JCTree.Visitor {
             argtypes.add(attribStat(p, localEnv));
         }
 
-        //Type mpt = newMethTemplate(argtypes.toList(), List.<Type>nil());
-        //Type mtype = attribExpr(tree.selector, localEnv, mpt);
         int skind = VAL | TYP;
-        //the following will attribute the lhs/rhs classes
-
-        //we need to enter the scope of the receiver class
-        //so we don't get access errors on private methods.
-        //dirty ahead!!
         Env<AttrContext> privEnv =
             env.dup(tree, env.info.dup());
 
-        Symbol classSymbol = dirtyPreAttrib(tree.selector.selected, privEnv, skind, Infer.anyPoly);
-        //creating an env scoped on classSymbol
-        //copied from Enter::classEnv()
-        privEnv.outer = env;
-        privEnv.info.isSelfCall = false;
-        privEnv.info.lint = null;
-        privEnv.enclClass.sym = (ClassSymbol)classSymbol; //argh
+        ClassSymbol bkClass = env.enclClass.sym;
+        PackageSymbol bkPkg = env.toplevel.packge;
 
-        //Name fullname = TreeInfo.fullName(tree.selector.selected);
-        //Name flat = names.fromString(fullname.toString().replace('.', '$'));
-        //ClassSymbol classSymbol  = reader.enterClass(flat);
-        //Env<AttrContext> privEnv =
-        //    env.dup(tree, env.info.dup(new Scope(classSymbol)));
-        //localEnv.enclClass = tree; //we dont have a classdecl around
+        Symbol classSymbol = dirtyPreAttrib(tree.selector.selected, privEnv, env, skind);
 
         //this will attribute all classes in (X.Y.Z.m) except "m"
         //in the scope of class Z (as privEnv)
@@ -812,6 +840,9 @@ public class Attr extends JCTree.Visitor {
         DiagnosticPosition pos = tree.pos();
         tree.sym = tree.selector.sym = rs.resolveQualifiedMethod(pos, env, site.tsym, site, name,
                     tree.getArgTypes(), pt.getTypeArguments(), false);
+
+        env.enclClass.sym = bkClass;
+        env.toplevel.packge = bkPkg;
     }
 
     public void visitMethodDef(JCMethodDecl tree) {
