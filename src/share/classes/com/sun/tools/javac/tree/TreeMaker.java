@@ -161,8 +161,7 @@ public class TreeMaker implements JCTree.Factory {
         } else if (clazz.getTag() == JCTree.SELECT) {
             mname = ((JCFieldAccess)clazz).name == name ? names.init : name;
         } else {
-            System.out.println("++BUG");
-
+            throw new RuntimeException("++BUG: TreeMaker:PropagateMethodSimple()");
         }
 
         JCPropagateMethodSimple tree = new JCPropagateMethodSimple(clazz, mname, params);

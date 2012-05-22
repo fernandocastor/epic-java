@@ -102,7 +102,7 @@ public class ScriptPropagate {
                     s += css.fullname + "::" + i.sym;
                     break;
                 default:
-                    System.err.println("++BUG!!");
+                    throw new RuntimeException("++BUG!! ScriptPropagate::logPropagateError");
             }
             s += "*]";
         } else {

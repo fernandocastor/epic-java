@@ -312,8 +312,7 @@ public class PropagateFlow extends TreeScanner {
                 methods = lookupMethods((JCTree.JCPropagateMethodPolym)m);
 
             } else {
-                System.out.println("UOPS! this is a bug");
-                //error!
+                throw new RuntimeException("UOPS! this is a bug");
             }
             if (methods == null || methods.isEmpty()) {
                 //some propagate nodes wheren't found

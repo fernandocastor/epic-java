@@ -762,9 +762,8 @@ public class Attr extends JCTree.Visitor {
                 attribTree(tree, env, TYP, pt);
                 return TreeInfo.symbol(tree);
             default:
-                System.out.println("++BUG");
+                throw new RuntimeException("++BUG: Attr::dirtyPreAttrib");
         }
-        return null;
     }
 
     public void visitPropagateMethod(JCPropagateMethodSimple tree) {
