@@ -554,6 +554,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         public JCFieldAccess selector;
         public List<JCVariableDecl> params;
         public Symbol sym;
+        public boolean direct;
 
         protected JCPropagateMethodSimple(JCExpression clazz,
                                           Name name,
@@ -609,6 +610,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         public JCExpression sup;
         public List<? extends JCExpression> selectors;
         public List<JCVariableDecl> params;
+        public boolean direct;
 
         protected JCPropagateMethodPolym(List<JCExpression> subs,
                                          JCExpression sup,

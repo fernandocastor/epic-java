@@ -2335,11 +2335,20 @@ public class JavacParser implements Parser {
 
         accept(COLON);
 
-        nodes.append(propagateMethod());
+        JCTree p = propagateMethod();
+        nodes.append(p);
 
-        while (S.token() == RIGHT_ARROW) {
+        while (S.token() == RIGHT_ARROW || S.token() == RIGHT_DARROW) {
+            if (p.getTag() == JCTree.PROPAGATE_METHOD_SIMPLE) {
+                ((JCTree.JCPropagateMethodSimple)p).direct = S.token() == RIGHT_DARROW;
+            } else if (p.getTag() == JCTree.PROPAGATE_METHOD_POLYM) {
+                ((JCTree.JCPropagateMethodPolym)p).direct = S.token() == RIGHT_DARROW;
+            } else {
+                throw new RuntimeException("++BUG javac parser");
+            }
             S.nextToken();
-            nodes.append(propagateMethod());
+            p = propagateMethod();
+            nodes.append(p);
         }
 
         JCTree ret = toP(F.at(S.pos()).Propagate(thrown, nodes.toList()));
@@ -2374,7 +2383,8 @@ public class JavacParser implements Parser {
             accept(DOUBLE_COLON);
             Name method = ident();
             List<JCVariableDecl> params = propagateSignatureParameters();
-            return toP(F.at(S.pos()).PropagateMethodSimple(clazz,method,params));
+            return toP(F.at(S.pos()).PropagateMethodSimple(
+                    clazz,method,params));
         }
     }
 
