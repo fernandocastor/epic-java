@@ -804,6 +804,7 @@ public class Attr extends JCTree.Visitor {
                 attribTree(tree, e, pkind, pt);
                 return TreeInfo.symbol(tree);
             case JCTree.TYPEIDENT: //primitive type
+            case JCTree.TYPEARRAY:
                 attribTree(tree, e, pkind, pt);
                 return TreeInfo.symbol(tree);
             default:
