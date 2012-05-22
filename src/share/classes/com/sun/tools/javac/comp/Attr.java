@@ -759,7 +759,7 @@ public class Attr extends JCTree.Visitor {
                 attribTree(tree, env, pkind, pt);
                 return TreeInfo.symbol(tree);
             case JCTree.IDENT:
-                attribTree(tree, env, TYP, pt);
+                attribTree(tree, env, TYP | PCK, pt);
                 return TreeInfo.symbol(tree);
             default:
                 throw new RuntimeException("++BUG: Attr::dirtyPreAttrib");
