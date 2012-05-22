@@ -166,7 +166,7 @@ function test2() {
 var argument = null
 function start() {
   //return process.exit(0);
-  return test2();
+  //return test2();
 
   if (process.argv.length != 3) {
     console.log('missing arg');

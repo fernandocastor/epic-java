@@ -215,7 +215,7 @@ function process_node(node, str, nodes, fn) {
     return false;
   }
 
-  str = str ? str + " -> " : '';
+  str = str ? str + " => " : '';
 
   //ddd("entering");
 
