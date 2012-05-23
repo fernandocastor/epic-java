@@ -139,9 +139,9 @@ function get_poly_str(node, fn) {
 
   var ret = []
 
-  var i = 0;
   function load_children(hnode, lowest, fnn) {
     var col = new mongo.Collection(client, "hierarchy");
+    var i = 0;
     //ddd("poly load_children: " + hnode.node);
 
     col.find({ex:hnode.ex, parent:hnode._id}, function(e, chs) {
