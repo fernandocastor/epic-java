@@ -527,22 +527,52 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         memberEnter(tree.props, env);
     }
 
+    public Env<AttrContext> dirtyAttrib(JCTree tree, Env<AttrContext> e, int pkind, Type pt) {
+        Env<AttrContext> local;
+        switch (tree.getTag()) {
+            case JCTree.VARDEF:
+                JCVariableDecl v = (JCVariableDecl)tree;
+                return dirtyAttrib(v.vartype, e, TYP, pt);
+            case JCTree.TYPEAPPLY:
+                JCTypeApply t = (JCTypeApply)tree;
+                local = dirtyAttrib(t.clazz, e, pkind, pt);
+                for( JCTree arg: t.arguments) {
+                    dirtyAttrib(arg, e, pkind, pt);
+                }
+                return local;
+            case JCTree.SELECT:
+                JCFieldAccess f = (JCFieldAccess)tree;
+                dirtyAttrib(f.selected, e, pkind, pt);
+                local = enter.typeEnvs.get(TreeInfo.symbol(f.selected));
+                local = (local == null)? e: local;
+                attr.attribTree(f, local, TYP | PCK, pt);
+                local = enter.typeEnvs.get(TreeInfo.symbol(f));
+                return (local == null)? e: local;
+            case JCTree.IDENT:
+                attr.attribTree(tree, e, TYP | PCK, pt);
+                local = enter.typeEnvs.get(TreeInfo.symbol(tree));
+                return (local == null)? e: local;
+            case JCTree.TYPEIDENT: //primitive type
+            case JCTree.TYPEARRAY:
+                attr.attribTree(tree, e, TYP, pt);
+                return e;
+            default:
+                throw new RuntimeException("++BUG: Attr::dirtyPreAttrib: " + tree.getTag() + " + " + tree.toString()) ;
+        }
+    }
+
     public void visitPropagate(JCPropagate tree) {
         //add env to TODO so we check exception class hierarchy
         //in Attr.java visitPropagate()
         todo.append(env.dup(tree));
 
-        int skind = VAL | TYP;
-        Env<AttrContext> privEnv =
-            env.dup(tree, env.info.dup());
-
         //setup environment to workaround
         //access policy
         //(thrown type might be private from where we stand in env)
-        attr.dirtyPreAttrib(tree.thrown, privEnv, env, skind);
+        Env<AttrContext> local = dirtyAttrib(tree.thrown, env, VAL | TYP, Infer.anyPoly);
 
         //load symbol for the thrown type
-        /*Type exc = */attr.attribType(tree.thrown, privEnv);
+        attr.attribType(tree.thrown, local);
 
         for (JCTree m : tree.nodes) {
             m.accept(this);
@@ -554,22 +584,16 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         memberEnter(tree.subs, env);
         memberEnter(tree.selectors, env);
 
-        int skind = VAL | TYP;
-        Env<AttrContext> privEnv =
-            env.dup(tree, env.info.dup());
+
+        Env<AttrContext> classEnv = dirtyAttrib(tree.sup, env, TYP, Infer.anyPoly);
 
         //setup environment to workaround
         //access policy
         //(thrown type might be private from where we stand in env)
 
-        ClassSymbol bkClass = env.enclClass.sym;
-        PackageSymbol bkPkg = env.toplevel.packge;
-
         for (List<? extends JCTree> l = tree.params; l.nonEmpty(); l = l.tail) {
-            attr.dirtyPreAttrib(l.head, privEnv, env, skind);
-            memberEnter(l.head, env);
-            env.enclClass.sym = bkClass;
-            env.toplevel.packge = bkPkg;
+            Env<AttrContext> local = dirtyAttrib(l.head, classEnv, VAL, Infer.anyPoly);
+            memberEnter(l.head, local);
         }
     }
 
@@ -578,22 +602,15 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         memberEnter(tree.selector, env);
         //load symbol for the parameters
 
-        int skind = VAL | TYP;
-        Env<AttrContext> privEnv =
-            env.dup(tree, env.info.dup());
-
         //setup environment to workaround
         //access policy
         //(thrown type might be private from where we stand in env)
 
-        ClassSymbol bkClass = env.enclClass.sym;
-        PackageSymbol bkPkg = env.toplevel.packge;
+        Env<AttrContext> classEnv = dirtyAttrib(tree.selector.selected, env, TYP, Infer.anyPoly);
 
         for (List<? extends JCTree> l = tree.params; l.nonEmpty(); l = l.tail) {
-            attr.dirtyPreAttrib(l.head, privEnv, env, skind);
-            memberEnter(l.head, env);
-            env.enclClass.sym = bkClass;
-            env.toplevel.packge = bkPkg;
+            Env<AttrContext> local = dirtyAttrib(l.head, classEnv, VAL, Infer.anyPoly);
+            memberEnter(l.head, local);
         }
 
     }
