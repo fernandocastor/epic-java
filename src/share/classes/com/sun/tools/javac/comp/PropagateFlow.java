@@ -154,7 +154,7 @@ public class PropagateFlow extends TreeScanner {
         Type subtype = ((Type.ClassType)sub.sym.owner.type).supertype_field;
         while (true) {
             if (subtype == Type.noType) throw new UnrelatedClassException(sub.sym.owner, base.sym.owner);
-            if (subtype == base.sym.owner.type) {
+            if (subtype.tsym == base.sym.owner) {
                 return i;
             }
             i++;
