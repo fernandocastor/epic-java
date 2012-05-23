@@ -705,6 +705,31 @@ public class Attr extends JCTree.Visitor {
         }
     }
 
+    public Type dirtyAttrib(JCTree tree, Env<AttrContext> e, int pkind, Type pt) {
+        Env<AttrContext> local;
+        switch (tree.getTag()) {
+            case JCTree.VARDEF:
+                JCVariableDecl v = (JCVariableDecl)tree;
+                return dirtyAttrib(v.vartype, e, TYP, pt);
+            case JCTree.TYPEAPPLY:
+                throw new RuntimeException("attr: TYPE_APPLY");
+            case JCTree.SELECT:
+                JCFieldAccess f = (JCFieldAccess)tree;
+                dirtyAttrib(f.selected, e, pkind, pt);
+                local = enter.typeEnvs.get(TreeInfo.symbol(f.selected));
+                if (local == null) local = e;
+                return attribTree(f, local, pkind | PCK, pt);
+            case JCTree.IDENT:
+                return attribTree(tree, e, TYP | PCK, pt);
+            case JCTree.TYPEIDENT: //primitive type
+            case JCTree.TYPEARRAY:
+                return attribTree(tree, e, TYP, pt);
+            default:
+                throw new RuntimeException("++BUG: Attr::dirtyPreAttrib: " + tree.getTag() + " + " + tree.toString()) ;
+        }
+    }
+
+
     public void visitPropagateMethod(JCPropagateMethodPolym tree) {
         //checking if the method exists...
         //Given C.m(), we should not care if m is static or instance-specific.
@@ -731,30 +756,6 @@ public class Attr extends JCTree.Visitor {
         }
     }
 
-
-    public Type dirtyAttrib(JCTree tree, Env<AttrContext> e, int pkind, Type pt) {
-        Env<AttrContext> local;
-        switch (tree.getTag()) {
-            case JCTree.VARDEF:
-                JCVariableDecl v = (JCVariableDecl)tree;
-                return dirtyAttrib(v.vartype, e, TYP, pt);
-            case JCTree.TYPEAPPLY:
-                throw new RuntimeException("attr: TYPE_APPLY");
-            case JCTree.SELECT:
-                JCFieldAccess f = (JCFieldAccess)tree;
-                dirtyAttrib(f.selected, e, pkind, pt);
-                local = enter.typeEnvs.get(TreeInfo.symbol(f.selected));
-                if (local == null) local = e;
-                return attribTree(f, local, pkind | PCK, pt);
-            case JCTree.IDENT:
-                return attribTree(tree, e, TYP | PCK, pt);
-            case JCTree.TYPEIDENT: //primitive type
-            case JCTree.TYPEARRAY:
-                return attribTree(tree, e, TYP, pt);
-            default:
-                throw new RuntimeException("++BUG: Attr::dirtyPreAttrib: " + tree.getTag() + " + " + tree.toString()) ;
-        }
-    }
 
     public void visitPropagateMethod(JCPropagateMethodSimple tree) {
         //checking if the method exists...
