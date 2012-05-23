@@ -549,7 +549,7 @@ public class PropagateFlow extends TreeScanner {
 
                 //postponing overriding check
                 overridingCheckList.add(
-                        new OverridingTriple(clazz, this.self, t, this.currentPropagate.pos()));
+                        new OverridingTriple(clazz, uppermost, t, this.currentPropagate.pos()));
 
                 //add exception type to thrown list
                 this.self.thrown = this.self.thrown.append(t);

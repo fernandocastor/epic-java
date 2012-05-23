@@ -61,8 +61,10 @@ public class ScriptPropagate {
         Symbol.ClassSymbol mcs = (Symbol.ClassSymbol) m.owner;
         Symbol.ClassSymbol cs = (Symbol.ClassSymbol) overrided.owner;
 
+        
         if (((Type.ClassType)mcs.type).supertype_field.tsym != cs.type.tsym) {
-            throw new RuntimeException("Relationship between overrided/overriden unknown");
+            //dont send this to script
+            return;
         }
 
         String first = "{*" + mcs.fullname + "::" + m + "*}";
