@@ -553,7 +553,24 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         memberEnter(tree.sup, env);
         memberEnter(tree.subs, env);
         memberEnter(tree.selectors, env);
-        memberEnter(tree.params, env);
+
+        int skind = VAL | TYP;
+        Env<AttrContext> privEnv =
+            env.dup(tree, env.info.dup());
+
+        //setup environment to workaround
+        //access policy
+        //(thrown type might be private from where we stand in env)
+
+        ClassSymbol bkClass = env.enclClass.sym;
+        PackageSymbol bkPkg = env.toplevel.packge;
+
+        for (List<? extends JCTree> l = tree.params; l.nonEmpty(); l = l.tail) {
+            attr.dirtyPreAttrib(l.head, privEnv, env, skind);
+            memberEnter(l.head, env);
+            env.enclClass.sym = bkClass;
+            env.toplevel.packge = bkPkg;
+        }
     }
 
     public void visitPropagateMethod(JCPropagateMethodSimple tree ) {

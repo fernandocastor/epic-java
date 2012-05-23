@@ -718,16 +718,28 @@ public class Attr extends JCTree.Visitor {
         //Type mpt = newMethTemplate(argtypes.toList(), List.<Type>nil());
         //Type mtype = attribExpr(tree.selector, localEnv, mpt);
         int skind = VAL | TYP;
+        Env<AttrContext> privEnv =
+            env.dup(tree, env.info.dup());
+
         //the following will attribute the lhs/rhs classes
         for (JCExpression e : tree.selectors) {
             JCFieldAccess s = (JCFieldAccess) e;
-            Type site = attribTree(s.selected, env, skind, Infer.anyPoly);
+            ClassSymbol bkClass = env.enclClass.sym;
+            PackageSymbol bkPkg = env.toplevel.packge;
+
+            Symbol classSymbol = dirtyPreAttrib(s.selected, privEnv, env, skind);
+            //Type site = attribTree(s.selected, env, skind, Infer.anyPoly);
+            attribTree(s.selected, privEnv, skind, Infer.anyPoly);
+
+            Type site = classSymbol.type;
 
             Name name = s.name;
             DiagnosticPosition pos = tree.pos();
             s.sym = rs.resolveQualifiedMethod(
                             pos, env, site.tsym, site, name,
                             tree.getArgTypes(), pt.getTypeArguments(), false);
+            env.enclClass.sym = bkClass;
+            env.toplevel.packge = bkPkg;
         }
     }
 
