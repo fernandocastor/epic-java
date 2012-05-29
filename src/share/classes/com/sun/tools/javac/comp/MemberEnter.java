@@ -591,8 +591,8 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         //(thrown type might be private from where we stand in env)
 
         for (List<? extends JCTree> l = tree.params; l.nonEmpty(); l = l.tail) {
-            Env<AttrContext> local = dirtyAttrib(l.head, classEnv, VAL, Infer.anyPoly);
-            memberEnter(l.head, local);
+            /*Env<AttrContext> local= */ dirtyAttrib(l.head, classEnv, VAL, Infer.anyPoly);
+            memberEnter(l.head, env);
         }
     }
 
