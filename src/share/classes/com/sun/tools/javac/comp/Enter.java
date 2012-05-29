@@ -296,7 +296,11 @@ public class Enter extends JCTree.Visitor {
             tree.packge = syms.unnamedPackage;
         }
         tree.packge.complete(); // Find all classes in package.
+
+
         Env<AttrContext> topEnv = topLevelEnv(tree);
+
+        typeEnvs.put(tree.packge, topEnv);
 
         // Save environment of package-info.java file.
         if (isPkgInfo) {

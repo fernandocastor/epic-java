@@ -542,8 +542,7 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
                 return local;
             case JCTree.SELECT:
                 JCFieldAccess f = (JCFieldAccess)tree;
-                dirtyAttrib(f.selected, e, pkind, pt);
-                local = enter.typeEnvs.get(TreeInfo.symbol(f.selected));
+                local = dirtyAttrib(f.selected, e, pkind, pt);
                 local = (local == null)? e: local;
                 attr.attribTree(f, local, TYP | PCK, pt);
                 local = enter.typeEnvs.get(TreeInfo.symbol(f));
@@ -609,8 +608,8 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         Env<AttrContext> classEnv = dirtyAttrib(tree.selector.selected, env, TYP, Infer.anyPoly);
 
         for (List<? extends JCTree> l = tree.params; l.nonEmpty(); l = l.tail) {
-            Env<AttrContext> local = dirtyAttrib(l.head, classEnv, VAL, Infer.anyPoly);
-            memberEnter(l.head, local);
+            /*Env<AttrContext> local = */ dirtyAttrib(l.head, classEnv, VAL, Infer.anyPoly);
+            memberEnter(l.head, env);
         }
 
     }

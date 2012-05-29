@@ -734,12 +734,6 @@ public class Attr extends JCTree.Visitor {
         //checking if the method exists...
         //Given C.m(), we should not care if m is static or instance-specific.
 
-        Env<AttrContext> localEnv = env.dup(tree, env.info.dup());
-        ListBuffer<Type> argtypes = new ListBuffer<Type>();
-        for(JCVariableDecl p: tree.params) {
-            argtypes.add(attribStat(p, localEnv));
-        }
-
         int skind = VAL | TYP;
 
         //the following will attribute the node classes
@@ -747,6 +741,12 @@ public class Attr extends JCTree.Visitor {
             JCFieldAccess s = (JCFieldAccess) e;
 
            Type site = dirtyAttrib(s.selected, env, skind, Infer.anyPoly);
+
+            ListBuffer<Type> argtypes = new ListBuffer<Type>();
+            for(JCVariableDecl p: tree.params) {
+                argtypes.add(attribTree(p, env, skind, Infer.anyPoly));
+            }
+
 
             Name name = s.name;
             DiagnosticPosition pos = tree.pos();
