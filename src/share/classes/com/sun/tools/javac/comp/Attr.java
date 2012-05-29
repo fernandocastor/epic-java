@@ -762,6 +762,9 @@ public class Attr extends JCTree.Visitor {
         //Given C.m(), we should not care if m is static or instance-specific.
         //we should also not care for its access policy
 
+        //I'm not sure if this is the right way to do it
+        //(calling attribStat instead of normal attribTree or dirtyAttrib,
+        //using localEnv instead of env, ...)
         Env<AttrContext> localEnv = env.dup(tree, env.info.dup());
         ListBuffer<Type> argtypes = new ListBuffer<Type>();
         for(JCVariableDecl p: tree.params) {

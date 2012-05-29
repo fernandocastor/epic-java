@@ -583,12 +583,11 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         memberEnter(tree.subs, env);
         memberEnter(tree.selectors, env);
 
-
+        //setup environment to workaround
+        //access policy.
+        //Using super class environment to evaluate the parameters
         Env<AttrContext> classEnv = dirtyAttrib(tree.sup, env, TYP, Infer.anyPoly);
 
-        //setup environment to workaround
-        //access policy
-        //(thrown type might be private from where we stand in env)
 
         for (List<? extends JCTree> l = tree.params; l.nonEmpty(); l = l.tail) {
             /*Env<AttrContext> local= */ dirtyAttrib(l.head, classEnv, VAL, Infer.anyPoly);
@@ -597,14 +596,10 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
     }
 
     public void visitPropagateMethod(JCPropagateMethodSimple tree ) {
-        //load symbol for the selector
         memberEnter(tree.selector, env);
-        //load symbol for the parameters
 
         //setup environment to workaround
         //access policy
-        //(thrown type might be private from where we stand in env)
-
         Env<AttrContext> classEnv = dirtyAttrib(tree.selector.selected, env, TYP, Infer.anyPoly);
 
         for (List<? extends JCTree> l = tree.params; l.nonEmpty(); l = l.tail) {
