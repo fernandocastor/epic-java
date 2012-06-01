@@ -1,0 +1,49 @@
+* == TODO NOW ==
+
+-> Generics on propagating
+   - reunião: definido usar propagating E: A<T>::a(T)
+         pois só usar a(T) não explicita de onde T vem
+         A<U>::a(U) mostra que U é um nome de tipo e faz
+         matching com T (o primeiro parametro de A).
+
+ propagating E: A<T>::a(T);
+
+  -dirtyAttrib should be updated so this works:
+
+   class A<T> {
+     private class X{ }
+     void a(X x) {... }
+   }
+
+   propagating E: A<T>::a(A.X);
+
+* == Generics ==
+
+0) [BUG] The following code is not reporting B::b not catching E.
+
+----------------------
+class E extends Exception {}
+
+class A<T> {
+    void a(T t) {
+        throw new E();
+    }
+}
+
+
+class B {
+    void b() {
+        new A<String>().a("oi");
+    }
+}
+
+propagating E: A::a(T);
+----------------------
+
+2) What about "A<T> ... void a() throws T{ .. }" ???
+
+
+* Wildcards *
+
+Definido em reunião: Implementar identificação de overloaded methods:
+   propagating E: A::a(*) // sintaxe a pensar...

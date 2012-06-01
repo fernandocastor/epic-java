@@ -7,45 +7,6 @@
   analise estatica de fluxo de excessoes
   Aspect J
 
-* == TODO NOW ==
-
-
-
-* == Generics ==
-
-0) [BUG] The following code is not reporting B::b not catching E.
-1) [BUG] A.class is showing an A::arg0 as attribute.
-   - reunião: definido usar propagating E: A<T>::a(T)
-         pois só usar a(T) não explicita de onde T vem
-         A<U>::a(U) mostra que U é um nome de tipo e faz
-         matching com T (o primeiro parametro de A).
-
-----------------------
-class E extends Exception {}
-
-class A<T> {
-    void a(T t) {
-        throw new E();
-    }
-}
-
-
-class B {
-    void b() {
-        new A<String>().a("oi");
-    }
-}
-
-propagating E: A::a(T);
-----------------------
-
-2) What about "A<T> ... void a() throws T{ .. }" ???
-
-
-* Wildcards *
-
-Definido em reunião: Implementar identificação de overloaded methods:
-   propagating E: A::a(*) // sintaxe a pensar...
 
 
 === Apresentacao ===
