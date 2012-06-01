@@ -2320,7 +2320,6 @@ public class JavacParser implements Parser {
     /*
      * TODO:
      *   -Instead of Ident, allow fully qualified namespace/package with . notation
-     *   -Eventually, make it work with generics
      */
 
     /** propagateDeclaration = PROPAGATE Ident ":"

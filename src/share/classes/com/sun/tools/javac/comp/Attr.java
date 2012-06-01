@@ -712,7 +712,11 @@ public class Attr extends JCTree.Visitor {
                 JCVariableDecl v = (JCVariableDecl)tree;
                 return dirtyAttrib(v.vartype, e, TYP, pt);
             case JCTree.TYPEAPPLY:
-                throw new RuntimeException("attr: TYPE_APPLY");
+                JCTypeApply tap = (JCTypeApply)tree;
+                Type ptype = dirtyAttrib(tap.clazz, e, TYP, pt).tsym.type;
+                tap.clazz.type = ptype;
+                return attribTree(tap, e, TYP, pt);
+                //return ptype;
             case JCTree.SELECT:
                 JCFieldAccess f = (JCFieldAccess)tree;
                 dirtyAttrib(f.selected, e, pkind, pt);

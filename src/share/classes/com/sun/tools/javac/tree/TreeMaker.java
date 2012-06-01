@@ -151,19 +151,23 @@ public class TreeMaker implements JCTree.Factory {
         return tree;
     }
 
+    private Name extractRealMethodName(JCTree clazz, Name name) {
+        if (clazz.getTag() == JCTree.IDENT) {
+            return ((JCIdent)clazz).name == name ? names.init : name;
+        } else if (clazz.getTag() == JCTree.SELECT) {
+            return ((JCFieldAccess)clazz).name == name ? names.init : name;
+        } else if (clazz.getTag() == JCTree.TYPEAPPLY) {
+            return extractRealMethodName(((JCTypeApply)clazz).clazz, name);
+        } else {
+            throw new RuntimeException("++BUG: TreeMaker:extractRealMethodName()");
+        }
+    }
+
     public JCPropagateMethodSimple PropagateMethodSimple(JCExpression clazz,
                                              Name name,
                                              List<JCVariableDecl> params) {
 
-        Name mname = null;
-        if (clazz.getTag() == JCTree.IDENT) {
-            mname = ((JCIdent)clazz).name == name ? names.init : name;
-        } else if (clazz.getTag() == JCTree.SELECT) {
-            mname = ((JCFieldAccess)clazz).name == name ? names.init : name;
-        } else {
-            throw new RuntimeException("++BUG: TreeMaker:PropagateMethodSimple()");
-        }
-
+        Name mname = extractRealMethodName(clazz, name);
         JCPropagateMethodSimple tree = new JCPropagateMethodSimple(clazz, mname, params);
         tree.pos = pos;
         return tree;

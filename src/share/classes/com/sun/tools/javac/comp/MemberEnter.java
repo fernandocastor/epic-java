@@ -537,23 +537,23 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
                 JCTypeApply t = (JCTypeApply)tree;
                 local = dirtyAttrib(t.clazz, e, pkind, pt);
                 for( JCTree arg: t.arguments) {
-                    dirtyAttrib(arg, e, pkind, pt);
+                    dirtyAttrib(arg, local, TYPEVAR, pt);
                 }
                 return local;
             case JCTree.SELECT:
                 JCFieldAccess f = (JCFieldAccess)tree;
                 local = dirtyAttrib(f.selected, e, pkind, pt);
                 local = (local == null)? e: local;
-                attr.attribTree(f, local, TYP | PCK, pt);
+                attr.attribTree(f, local, pkind, pt);
                 local = enter.typeEnvs.get(TreeInfo.symbol(f));
                 return (local == null)? e: local;
             case JCTree.IDENT:
-                attr.attribTree(tree, e, TYP | PCK, pt);
+                attr.attribTree(tree, e, pkind, pt);
                 local = enter.typeEnvs.get(TreeInfo.symbol(tree));
                 return (local == null)? e: local;
             case JCTree.TYPEIDENT: //primitive type
             case JCTree.TYPEARRAY:
-                attr.attribTree(tree, e, TYP, pt);
+                attr.attribTree(tree, e, pkind, pt);
                 return e;
             default:
                 throw new RuntimeException("++BUG: Attr::dirtyPreAttrib: " + tree.getTag() + " + " + tree.toString()) ;
