@@ -1,0 +1,96 @@
+-- pegar as refs com paulo borba da apresentaaco / graph query
+
+* Ler *
+  AOSD 2008 - nelio (e os mais recentes)
+   - uma das melhores discussoes sobre checked-exceptions (prof. que escreveu)
+  anchored exceptions
+  analise estatica de fluxo de excessoes
+  Aspect J
+
+* == TODO NOW ==
+
+
+
+* == Generics ==
+
+0) [BUG] The following code is not reporting B::b not catching E.
+1) [BUG] A.class is showing an A::arg0 as attribute.
+   - reunião: definido usar propagating E: A<T>::a(T)
+         pois só usar a(T) não explicita de onde T vem
+         A<U>::a(U) mostra que U é um nome de tipo e faz
+         matching com T (o primeiro parametro de A).
+
+----------------------
+class E extends Exception {}
+
+class A<T> {
+    void a(T t) {
+        throw new E();
+    }
+}
+
+
+class B {
+    void b() {
+        new A<String>().a("oi");
+    }
+}
+
+propagating E: A::a(T);
+----------------------
+
+2) What about "A<T> ... void a() throws T{ .. }" ???
+
+
+* Wildcards *
+
+Definido em reunião: Implementar identificação de overloaded methods:
+   propagating E: A::a(*) // sintaxe a pensar...
+
+
+=== Apresentacao ===
+   30min de apr. (pra  acabar as 16)
+
+  [latex-template: github fernando castor - aulas_floss]
+
+  [compactar os "propagates" do freemind]
+
+ -- rationale: problema de manutenção de checked-exceptions
+     -- ler os papers
+
+       Hipotese: se declararmos exceções de forma global, talvez
+                 escale melhor.
+      Throws, na manutenção, requer mudanças "locais e em cascata".
+
+
+ -- Explicação da proposta
+   - compatibilidade com throws (complementary, non-competing, etc)
+   - overriding
+   - direct call (rationale, ver o email com ex. que mandei pro castor)
+ -- Usar o codigo do plp.
+
+ -- Freemind/core (especificar o pacote java que eu fiz)
+ -- os numeros (estatisticazinhas)
+
+
+
+ -- O ultimo node do propagates tem que ser o handling site.
+    (ou seja, prop E: A::a() -> B::b(), B::b _nao_ lanca E. Assume que faz catch)
+
+ -- open problems:
+     - throws T (Generics)
+     - Deep hierarchyes with throws (ie. ASTs) / overriding
+     - Necessidade de apoio de ferramerntas para reasoning da aplicação
+     - semantica
+     -
+
+  "escopo: Como eu to começando cedo, nao da pra saber onde a gente vai
+   chegar...entao o escopo ta em aberto"
+
+  "queremos definir a semantica, pelo menos, de manteira sistematica.
+   -- ie. Pelo menos, com o mesmo rigor da ling. java"
+
+  -- ramblings
+      - uso de disjunção / negação
+      - propagates com nomes
+      - composição de canais
