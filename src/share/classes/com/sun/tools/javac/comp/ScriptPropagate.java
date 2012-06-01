@@ -43,7 +43,7 @@ public class ScriptPropagate {
     }
 
     public static void logPaths() {
-        String out = "====================================\n";
+        String out = "";
         for (Map.Entry<String, List<String>> entry : paths.entrySet()) {
             out += ("[paths for]: " + entry.getKey() + "\n");
             for (String s : entry.getValue()) {
@@ -52,8 +52,10 @@ public class ScriptPropagate {
             out += "\n-----------------------------\n";
         }
 
-        out += "=======================================\n\n";
-        dumpPaths(out);
+        if (out.length() != 0) {
+            out += "=======================================\n\n";
+            dumpPaths("====================================\n" + out);
+        }
         paths = new HashMap<String,List<String>>();
     }
 
