@@ -596,8 +596,6 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
     }
 
     public void visitPropagateMethod(JCPropagateMethodSimple tree ) {
-        memberEnter(tree.selector, env);
-
         //setup environment to workaround
         //access policy
         Env<AttrContext> classEnv = dirtyAttrib(tree.selector.selected, env, TYP, Infer.anyPoly);
