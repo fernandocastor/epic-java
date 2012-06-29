@@ -724,7 +724,7 @@ public class Attr extends JCTree.Visitor {
                 if (local == null) local = e;
                 return attribTree(f, local, pkind | PCK, pt);
             case JCTree.IDENT:
-                return attribTree(tree, e, TYP | PCK, pt);
+                return attribTree(tree, e, pkind | PCK, pt);
             case JCTree.TYPEIDENT: //primitive type
             case JCTree.TYPEARRAY:
                 return attribTree(tree, e, TYP, pt);
@@ -738,17 +738,15 @@ public class Attr extends JCTree.Visitor {
         //checking if the method exists...
         //Given C.m(), we should not care if m is static or instance-specific.
 
-        int skind = VAL | TYP;
-
         //the following will attribute the node classes
         for (JCExpression e : tree.selectors) {
             JCFieldAccess s = (JCFieldAccess) e;
 
-           Type site = dirtyAttrib(s.selected, env, skind, Infer.anyPoly);
+           Type site = dirtyAttrib(s.selected, env, VAL | TYP, Infer.anyPoly);
 
             ListBuffer<Type> argtypes = new ListBuffer<Type>();
             for(JCVariableDecl p: tree.params) {
-                argtypes.add(attribTree(p, env, skind, Infer.anyPoly));
+                argtypes.add(attribTree(p, env, VAL | TYP, Infer.anyPoly));
             }
 
 

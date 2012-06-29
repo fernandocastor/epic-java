@@ -544,11 +544,11 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
                 JCFieldAccess f = (JCFieldAccess)tree;
                 local = dirtyAttrib(f.selected, e, pkind, pt);
                 local = (local == null)? e: local;
-                attr.attribTree(f, local, pkind, pt);
+                attr.attribTree(f, local, pkind | PCK, pt);
                 local = enter.typeEnvs.get(TreeInfo.symbol(f));
                 return (local == null)? e: local;
             case JCTree.IDENT:
-                attr.attribTree(tree, e, pkind, pt);
+                attr.attribTree(tree, e, pkind | PCK, pt);
                 local = enter.typeEnvs.get(TreeInfo.symbol(tree));
                 return (local == null)? e: local;
             case JCTree.TYPEIDENT: //primitive type
