@@ -32,11 +32,11 @@ function set_debug(bool) {
       }, 0);
     }
   } else {
-    d = {info: new Function};
+    d = new Function;
   }
 }
 
-set_debug(true);
+set_debug(false);
 
 function exit() {
   d("------------------ END ---------------\n\n");
