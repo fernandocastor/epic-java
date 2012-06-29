@@ -27,4 +27,4 @@ class S {
     }
 }
 
-propagate E: A::a() -> S::s();
+propagating E: A::a() -> S::s();

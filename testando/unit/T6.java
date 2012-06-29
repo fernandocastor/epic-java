@@ -25,4 +25,4 @@ class S {
     }
 }
 
-propagate E: A::a() -> {B <: SupB}::b() -> S::s();
+propagating E: A::a() -> {B <: SupB}::b() -> S::s();

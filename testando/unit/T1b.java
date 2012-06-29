@@ -15,4 +15,4 @@ class S {
     }
 }
 
-propagate E: A::a(int) -> S::s();
+propagating E: A::a(int) -> S::s();

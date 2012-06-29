@@ -16,5 +16,5 @@ class T {
     }
 }
 
-//propagate E: T::p() -> T::m() -> T::l();
-propagate E: T::p() -> T::l();
+//propagating E: T::p() -> T::m() -> T::l();
+propagating E: T::p() -> T::l();
