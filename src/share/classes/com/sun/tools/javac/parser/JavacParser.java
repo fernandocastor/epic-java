@@ -2248,7 +2248,7 @@ public class JavacParser implements Parser {
             if (checkForImports && mods == null && S.token() == IMPORT) {
                 defs.append(importDeclaration());
             } else if (S.token() == PROPAGATE) {
-                props.append(propagateDeclaration());
+                props.addAll(propagateDeclaration());
             } else {
                 JCTree def = typeDeclaration(mods);
                 if (keepDocComments && dc != null && docComments.get(def) == dc) {
@@ -2325,12 +2325,12 @@ public class JavacParser implements Parser {
     /** propagateDeclaration = PROPAGATE Ident ":"
      *                         {PropagateMethod "->"}+ PropagateMethod ";"
      */
-    JCTree propagateDeclaration() {
+    Collection<JCTree> propagateDeclaration() {
         S.nextToken(); //consume 'propagate'
 
         ListBuffer<JCTree> nodes = new ListBuffer<JCTree>();
 
-        JCExpression thrown = parseType();
+        List<JCExpression> throwns = typeList();
 
         accept(COLON);
 
@@ -2350,8 +2350,13 @@ public class JavacParser implements Parser {
             nodes.append(p);
         }
 
-        JCTree ret = toP(F.at(S.pos()).Propagate(thrown, nodes.toList()));
         accept(SEMI);
+
+        //expand the list of types to individual propagates
+        ArrayList<JCTree> ret = new ArrayList<JCTree>();
+        for(JCExpression t: throwns) {
+            ret.add(toP(F.at(S.pos()).Propagate(t, nodes.toList())));
+        }
         return ret;
     }
     /**
