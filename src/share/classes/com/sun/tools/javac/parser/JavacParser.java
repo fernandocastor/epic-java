@@ -2371,20 +2371,32 @@ public class JavacParser implements Parser {
             accept(EXTENDS_SYM);
             JCExpression sup= parseType();
             accept(RBRACE);
-            accept(DOUBLE_COLON);
+            accept(DOT);
             Name method = ident();
             List<JCVariableDecl> params = propagateSignatureParameters();
 
             return toP(F.at(S.pos()).PropagateMethodPolym(
                     subs.toList(),sup,method,params));
         } else {
-            JCExpression clazz = parseType();
-            accept(DOUBLE_COLON);
-            Name method = ident();
+            Pair<JCExpression, Name> p = propagateQualident();
+            JCExpression clazz = p.fst;
+            Name method = p.snd;
             List<JCVariableDecl> params = propagateSignatureParameters();
             return toP(F.at(S.pos()).PropagateMethodSimple(
                     clazz,method,params));
         }
+    }
+
+    public Pair<JCExpression, Name> propagateQualident() {
+        Name name = ident();
+        JCExpression t = null;
+        while (S.token() == DOT) {
+            int pos = S.pos();
+            t = t == null ? toP(F.at(S.pos()).Ident(name)) : toP(F.at(pos).Select(t, name));
+            S.nextToken();
+            name = ident();
+        }
+        return new Pair<JCExpression, Name>(t, name);
     }
 
     List<JCVariableDecl> propagateSignatureParameters() {
