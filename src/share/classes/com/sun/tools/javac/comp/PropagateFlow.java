@@ -503,7 +503,7 @@ public class PropagateFlow extends TreeScanner {
 
         void setupThrowPath() {
             this.atLeastOnePathFound = true;
-            //ScriptPropagate.addPath(this.currentPropagate.toString(), this.pathAsString(this.node));
+            ScriptPropagate.addPath(this.currentPropagate.thrown.toString(), this.pathAsString(this.node));
             //System.out.println("Found path: " + this.pathAsString(this.node));
 
 

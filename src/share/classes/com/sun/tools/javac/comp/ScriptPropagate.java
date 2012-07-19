@@ -43,18 +43,15 @@ public class ScriptPropagate {
     }
 
     public static void logPaths() {
-        String out = "";
+        String s = "";
+        String nl = "";
         for (Map.Entry<String, List<String>> entry : paths.entrySet()) {
-            out += ("[paths for]: " + entry.getKey() + "\n");
-            for (String s : entry.getValue()) {
-                out += "* " + s;
+            s = entry.getKey() + "#";
+            for (String path : entry.getValue()) {
+                s += nl + path;
+                nl = "%";
             }
-            out += "\n-----------------------------\n";
-        }
-
-        if (out.length() != 0) {
-            out += "=======================================\n\n";
-            dumpPaths("====================================\n" + out);
+            dumpPath(s);
         }
         paths = new HashMap<String,List<String>>();
     }
@@ -115,10 +112,9 @@ public class ScriptPropagate {
         execute(s);
     }
 
-    static private void dumpPaths(String s) {
-        //System.out.println(s);
+    static private void dumpPath(String s) {
         try {
-            String[] cmd = {"pjavac-log-paths", s};
+            String[] cmd = {"pjavac-path", s};
 
             Runtime runtime = Runtime.getRuntime();
             Process process = runtime.exec(cmd);
