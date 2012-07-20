@@ -300,7 +300,7 @@ public class PropagateFlow extends TreeScanner {
         private List<List<JCTree.JCMethodDecl>> _oredMethods;
         public boolean direct;
         public boolean ored;
-        public JCTree.JCMethodDecl matched;
+        public List<JCTree.JCMethodDecl> matched;
 
         public Target(List<JCTree.JCMethodDecl> methods, boolean direct) {
             this._methods = methods;
@@ -318,14 +318,14 @@ public class PropagateFlow extends TreeScanner {
             if (this.ored) {
                 for (List<JCTree.JCMethodDecl> lst : _oredMethods) {
                     if (m.sym == lst.get(0).sym) {
-                        this.matched = lst.get(0);
+                        this.matched = lst;
                         return true;
                     }
                 }
                 return false;
             } else {
                if (m.sym == this._methods.get(0).sym) {
-                   this.matched = this._methods.get(0);
+                   this.matched = this._methods;
                    return true;
                } else {
                    return false;
@@ -334,7 +334,8 @@ public class PropagateFlow extends TreeScanner {
         }
 
         boolean isPolym() {
-            return !this.ored && this._methods.size() > 1;
+            return (this.matched != null && this.matched.size() > 1) ||
+                   (!this.ored && this._methods.size() > 1);
         }
 
         List<JCTree.JCMethodDecl> getMethods() {
@@ -343,6 +344,9 @@ public class PropagateFlow extends TreeScanner {
 
         List<JCTree.JCMethodDecl> getHeadlessMethods() {
             return this._methods.subList(1, this._methods.size());
+        }
+        List<JCTree.JCMethodDecl> getHeadlessMatches() {
+        return this.matched.subList(1, this.matched.size());
         }
 
         JCTree.JCMethodDecl getHead() {
@@ -522,16 +526,16 @@ public class PropagateFlow extends TreeScanner {
         } else if (matchTargets(found)) { //found is propagate node
             if (this.targetsLeft.isEmpty()) { //we found the last propagate node: full match
                 PathNode bk = currentTree.node;
-                currentTree.setRoot(found, this.nextTargets.matched);
+                currentTree.setRoot(found, this.nextTargets.matched.get(0));
                 currentTree.setupThrowPath();
                 currentTree.node = bk;
                 //a polym node might be the first (raising-site) node. exhaust it:
                 if (this.nextTargets.isPolym()) {
-                    for (JCTree.JCMethodDecl met : this.nextTargets.getHeadlessMethods()) {
+                    for (JCTree.JCMethodDecl met : this.nextTargets.getHeadlessMatches()) {
                         currentTree.node = bk;
                         currentTree.setRoot(
                                 met,
-                                this.nextTargets.getHead());
+                                this.nextTargets.matched.get(0));
                         currentTree.setupThrowPath();
                     }
                 }
@@ -550,7 +554,7 @@ public class PropagateFlow extends TreeScanner {
                     }
                 } else {
                     PathNode bk = currentTree.node;
-                    currentTree.setRoot(tgs.matched);
+                    currentTree.setRoot(tgs.matched.get(0));
                     buildpath(currentTree.node);
                     currentTree.node = bk;
                 }
