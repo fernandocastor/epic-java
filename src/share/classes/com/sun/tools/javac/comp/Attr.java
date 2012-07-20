@@ -705,6 +705,12 @@ public class Attr extends JCTree.Visitor {
         }
     }
 
+    public void visitPropagateMethodOr(JCPropagateMethodOr tree) {
+        for (JCTree t : tree.ored) {
+            t.accept(this);
+        }
+    }
+
     public Type dirtyAttrib(JCTree tree, Env<AttrContext> e, int pkind, Type pt) {
         Env<AttrContext> local;
         switch (tree.getTag()) {

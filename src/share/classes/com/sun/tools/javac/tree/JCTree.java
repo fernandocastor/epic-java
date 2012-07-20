@@ -94,7 +94,9 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
 
     public static final int PROPAGATE = CLASSDEF+1;
 
-    public static final int PROPAGATE_METHOD_SIMPLE = PROPAGATE+1;
+    public static final int PROPAGATE_METHOD_OR = PROPAGATE+1;
+
+    public static final int PROPAGATE_METHOD_SIMPLE = PROPAGATE_METHOD_OR+1;
 
     public static final int PROPAGATE_METHOD_POLYM = PROPAGATE_METHOD_SIMPLE+1;
 
@@ -602,6 +604,36 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         }
 
         public Kind getKind() { return Kind.PROPAGATE_METHOD_SIMPLE; }
+    }
+
+    public static class JCPropagateMethodOr extends JCTree implements PropagateMethodOrTree {
+        public List<JCTree> ored;
+        public boolean direct;
+
+        protected JCPropagateMethodOr(List<JCTree> ored) {
+            this.ored = ored;
+        }
+
+        public List<? extends Tree> getOred() {
+            return this.ored;
+        }
+
+        @Override
+        public int getTag() {
+            return PROPAGATE_METHOD_OR;
+        }
+
+        @Override
+        public void accept(Visitor v) {
+            v.visitPropagateMethodOr(this);
+        }
+
+        @Override
+        public <R, D> R accept(TreeVisitor<R, D> v, D d) {
+            return v.visitPropagateMethodOr(this, d);
+        }
+
+        public Kind getKind() { return Kind.PROPAGATE_METHOD_POLYM; }
     }
 
     public static class JCPropagateMethodPolym extends JCTree implements PropagateMethodPolymTree {
@@ -2376,6 +2408,8 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
     public static abstract class Visitor {
         public void visitTopLevel(JCCompilationUnit that)    { visitTree(that); }
         public void visitPropagate(JCPropagate that)         { visitTree(that); }
+        public void visitPropagateMethodOr(JCPropagateMethodOr that)
+                                                             { visitTree(that); }
         public void visitPropagateMethod(JCPropagateMethodSimple that)
                                                              { visitTree(that); }
         public void visitPropagateMethod(JCPropagateMethodPolym that)

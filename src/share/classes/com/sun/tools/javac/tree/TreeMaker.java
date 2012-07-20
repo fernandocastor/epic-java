@@ -198,6 +198,12 @@ public class TreeMaker implements JCTree.Factory {
         return tree;
     }
 
+    public JCPropagateMethodOr PropagateMethodOr(List<JCTree> ored) {
+        JCPropagateMethodOr tree = new JCPropagateMethodOr(ored);
+        tree.pos = pos;
+        return tree;
+    }
+
     public JCClassDecl ClassDef(JCModifiers mods,
                                 Name name,
                                 List<JCTypeParameter> typarams,

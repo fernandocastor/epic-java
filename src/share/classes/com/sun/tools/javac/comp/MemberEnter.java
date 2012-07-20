@@ -578,6 +578,12 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         }
     }
 
+    public void visitPropagateMethodOr(JCPropagateMethodOr tree ) {
+        for(JCTree t: tree.ored) {
+            t.accept(this);
+        }
+    }
+
     public void visitPropagateMethod(JCPropagateMethodPolym tree ) {
         memberEnter(tree.sup, env);
         memberEnter(tree.subs, env);

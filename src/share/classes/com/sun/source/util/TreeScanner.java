@@ -127,6 +127,16 @@ public class TreeScanner<R,P> implements TreeVisitor<R,P> {
         return r;
     }
 
+    public R visitPropagateMethodOr(PropagateMethodOrTree node, P p) {
+        if (node.getOred().size() == 0) return null;
+
+        R r = scan(node.getOred().get(0), p);
+        for (int i = 1; i < node.getOred().size(); i++) {
+            r = scanAndReduce(node.getOred().get(i), p, r);
+        }
+        return r;
+    }
+
     public R visitPropagateMethod(PropagateMethodSimpleTree node, P p) {
         R r = scan(node.getSelector(), p);
         r = scanAndReduce(node.getParams(), p, r);

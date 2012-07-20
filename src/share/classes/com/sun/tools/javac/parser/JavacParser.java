@@ -2334,7 +2334,7 @@ public class JavacParser implements Parser {
 
         accept(COLON);
 
-        JCTree p = propagateMethod();
+        JCTree p = propagateMethodOr();
         nodes.append(p);
 
         while (S.token() == RIGHT_ARROW || S.token() == RIGHT_DARROW) {
@@ -2342,11 +2342,13 @@ public class JavacParser implements Parser {
                 ((JCTree.JCPropagateMethodSimple)p).direct = S.token() == RIGHT_DARROW;
             } else if (p.getTag() == JCTree.PROPAGATE_METHOD_POLYM) {
                 ((JCTree.JCPropagateMethodPolym)p).direct = S.token() == RIGHT_DARROW;
+            } else if (p.getTag() == JCTree.PROPAGATE_METHOD_OR) {
+                ((JCTree.JCPropagateMethodOr)p).direct = S.token() == RIGHT_DARROW;
             } else {
-                throw new RuntimeException("++BUG javac parser");
+                    throw new RuntimeException("++BUG javac parser");
             }
             S.nextToken();
-            p = propagateMethod();
+            p = propagateMethodOr();
             nodes.append(p);
         }
 
@@ -2359,6 +2361,22 @@ public class JavacParser implements Parser {
         }
         return ret;
     }
+
+    JCTree propagateMethodOr() {
+        JCTree ret = propagateMethod();
+        if (S.token() != BAR) {
+            return ret;
+        } else {
+            ListBuffer<JCTree> props = new ListBuffer<JCTree>();
+            props.add(ret);
+            while (S.token() == BAR) {
+                S.nextToken();
+                props.add(propagateMethod());
+            }
+            return toP(F.at(S.pos()).PropagateMethodOr(props.toList()));
+        }
+    }
+
     /**
      * PropagateMethod = Type "::" Ident FormalParameters
      *                  | {Type [',' Type]+ "<:" Type}
