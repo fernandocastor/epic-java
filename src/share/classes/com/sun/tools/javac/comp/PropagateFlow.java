@@ -463,7 +463,8 @@ public class PropagateFlow extends TreeScanner {
         } else if (shouldBeDirect()) {
             //we didn't match the current, and we are looking for a direct call
             //don't proceed.
-        } else { //not a propagate node. keep searching
+        } else { //not a propagate node and we are working with indirect call.
+                 //keep searching
             PathNode bk = currentTree.node;
             currentTree.setRoot(found);
             buildpath(currentTree.node);
