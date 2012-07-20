@@ -102,7 +102,7 @@ function process_virtuals() {
       get_poly_str(root, function(node_str) {
         //console.log("mark/prepend " + root.node + " -- " + node_str)
         if (mark_polynode(root.ex, node_str)) {
-          prepend("/*poly mark */ propagating " + root.ex + ": " + node_str + ";");
+          prepend("/*poly mark */ propagating " + root.ex + ": " + tr(node_str) + ";");
         }
         //console.log("exit? " + i + ": i == rootvs.length" + (i == rootvs.length));
         i++;
@@ -176,7 +176,7 @@ function get_poly_str(node, fn) {
     if (ret.length == 0) {
       fn(node.node)
     } else {
-      fn("{"+(ret.map(function(x) {return clazz(x.node)}).join(",")+"<:"+clazz(node.node)+"}::"+method(node.node)));
+      fn("{"+(ret.map(function(x) {return clazz(x.node)}).join(",")+"<:"+clazz(node.node)+"}."+method(node.node)));
     }
   });
 }
@@ -224,7 +224,7 @@ function process_node(node, str, nodes, fn) {
     if (children.length == 0) {
       //ddd(node.node + " is tail node");
       resolve_node_str(node, function(node_str) {
-        print("propagating " + node.ex + ": " + str + node_str + ";");
+        print("propagating " + node.ex + ": " + tr(str) + tr(node_str) + ";");
         fn();
       });
     } else {
@@ -280,4 +280,8 @@ function clazz(pair) {
 
 function method(pair) {
   return pair.match(/::(.*)/)[1];
+}
+
+function tr(str) {
+  return str.replace(/::/g,".");
 }
