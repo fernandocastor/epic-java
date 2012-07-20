@@ -597,7 +597,13 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
 
         for (List<? extends JCTree> l = tree.params; l.nonEmpty(); l = l.tail) {
             /*Env<AttrContext> local= */ dirtyAttrib(l.head, classEnv, VAL, Infer.anyPoly);
-            memberEnter(l.head, env);
+            //list of exceptions in channels is implemented
+            //by duplicating the propagating AST.
+            //if we memberEnter twice on a list of parameters
+            //we will have compile error for duplicated "arg0"
+            if (TreeInfo.symbolFor(l.head) == null) {
+                memberEnter(l.head, env);
+            }
         }
     }
 
@@ -608,7 +614,14 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
 
         for (List<? extends JCTree> l = tree.params; l.nonEmpty(); l = l.tail) {
             /*Env<AttrContext> local = */ dirtyAttrib(l.head, classEnv, VAL, Infer.anyPoly);
-            memberEnter(l.head, env);
+
+            //list of exceptions in channels is implemented
+            //by duplicating the propagating AST.
+            //if we memberEnter twice on a list of parameters
+            //we will have compile error for duplicated "arg0"
+            if (TreeInfo.symbolFor(l.head) == null) {
+                memberEnter(l.head, env);
+            }
         }
 
     }
