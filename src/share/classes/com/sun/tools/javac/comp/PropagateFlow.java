@@ -403,7 +403,7 @@ public class PropagateFlow extends TreeScanner {
                 if (t.getTag() == JCTree.PROPAGATE_METHOD_SIMPLE) {
                     JCTree.JCPropagateMethodSimple tx = (JCTree.JCPropagateMethodSimple)t;
                     methods = lookupMethods(tx);
-                } else if (m.getTag() == JCTree.PROPAGATE_METHOD_POLYM) {
+                } else if (t.getTag() == JCTree.PROPAGATE_METHOD_POLYM) {
                     JCTree.JCPropagateMethodPolym tm = (JCTree.JCPropagateMethodPolym)t;
                     methods = lookupMethods(tm);
                 } else {
