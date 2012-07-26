@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-if (process.env["MSC_IGNORE"]) process.exit(0)
-
 var mongo = require('mongodb');
 var winston = require('winston');
 var logger = new (winston.Logger);
@@ -24,8 +22,8 @@ db.open(function(error, c) {
 
 
 function start() {
-  register_paths();
-  //compare_paths();
+  //register_paths();
+  compare_paths();
 }
 
 function compare_paths() {

@@ -1,33 +1,31 @@
-// (*) -> x();
-// x() -> (*);
-// (*) | x() -> z();
-// x() -> z() | y(*);
-
 package testando;
 
 class E extends Exception {}
 
-class X {
+class A {
     void a() {
-    }
-    void a(int x) {
-        throw new E();
-    }
-}
-
-class Sub extends X {
-    void a() {
-        throw new E();
-    }
-    void a(int x) {
         throw new E();
     }
 
     void b() {
-        X x = new Sub();
-        x.a();
-        x.a(1);
+        a();
+    }
+
+    void c() {
+        b();
+    }
+
+    void e() {
+        b();
+    }
+
+    void d() {
+        c();
+    }
+    void f() {
+        d();
+        e();
     }
 }
 
-propagating E: {Sub<:X}.a() | {Sub<:X}.a(int) => Sub.b();
+propagating E: A.a() | A.b() -> A.f();

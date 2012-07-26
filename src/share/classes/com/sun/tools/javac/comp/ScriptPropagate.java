@@ -31,6 +31,7 @@ public class ScriptPropagate {
     public static List<String> hierarchy_second = new ArrayList<String>();
 
     public static HashMap<String, List<String>> paths = new HashMap<String,List<String>>();
+    
     public static void addPath(String prop, String path) {
         List<String> lst;
         if (paths.containsKey(prop)) {
@@ -112,8 +113,30 @@ public class ScriptPropagate {
         execute(s);
     }
 
+    public static void throwing(String method, String type) {
+        String s = method + "#" + type;
+        try {
+            String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-throw", s};
+
+            Runtime runtime = Runtime.getRuntime();
+            Process process = runtime.exec(cmd);
+            InputStream is = process.getInputStream();
+            InputStreamReader isr = new InputStreamReader(is);
+            BufferedReader br = new BufferedReader(isr);
+            String line;
+            while ((line = br.readLine()) != null) {
+                System.out.println(line);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }        
+    }
     static private void dumpPath(String s) {
-        //System.out.println("Dump: " + s);
+        //this really doesn't matter now...
+        //the above .throwing() is better
+        
+        if (true) return;
+
         try {
             String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-path", s};
 
@@ -136,8 +159,9 @@ public class ScriptPropagate {
             if(old.equals(s)) return;
         }
         lst.add(s);
-
+        
         //System.out.println(s);
+        if (true) return;
         try {
             String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-script", s};
 

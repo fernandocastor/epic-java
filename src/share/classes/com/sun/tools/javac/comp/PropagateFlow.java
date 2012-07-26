@@ -667,9 +667,19 @@ public class PropagateFlow extends TreeScanner {
                     currentTree.setRoot(found, this.nextTargets.matched.method);
                     currentTree.setupThrowPath();
                     currentTree.node = bk;
-                } else if (this.nextTargets.matched.isPolym) {                    
+                    
+                    if (this.nextTargets.isOred()) {
+                        PathNode bk1 = currentTree.node;
+                        currentTree.setRoot(found, this.nextTargets.matched.method);
+                        buildpath(currentTree.node);
+                        currentTree.node = bk1;
+                    }
+                } else if (this.nextTargets.matched.isPolym) {
                     //a polym node might be the first (raising-site) node. exhaust it:
                     PathNode bk = currentTree.node;
+                    currentTree.setRoot(found, this.nextTargets.matched.method);
+                    currentTree.setupThrowPath();
+                    currentTree.node = bk;
                     
                     for (JCTree.JCMethodDecl met : this.nextTargets.matched.getPolySubs()) {
                         currentTree.node = bk;
@@ -687,16 +697,17 @@ public class PropagateFlow extends TreeScanner {
                         currentTree.setRoot(met);
                         currentTree.setupThrowPath();
                     }
-                    currentTree.node = bk;                    
+                    currentTree.node = bk;
                 } else {
                     throw new RuntimeException("UOPS!1! Shouldnt be here");
                 }
-                    
-            } else { //intermediary match
+                
+            } else { //intermediary match or raising node is ored
+                Target tgs = this.nextTargets;
                 //-load the next nextTargets
                 //-proceed exploration of each method in each body of each method matched
-                Target tgs = this.nextTargets;
                 this.nextTargets = targetsLeft.remove(targetsLeft.size()-1);
+                
                 if (tgs.matched.isPolym) {
                     //for all subtypes+supertype X, navigate on X:m()'s body
                     for (JCTree.JCMethodDecl t : tgs.matched.methods) {
@@ -817,6 +828,8 @@ public class PropagateFlow extends TreeScanner {
                         new OverridingTriple(clazz, uppermost, t, this.currentPropagate.pos()));
 
                 //add exception type to thrown list
+                ScriptPropagate.throwing(this.self.sym.owner + "::"+this.self.sym, t.type.toString());
+                
                 this.self.thrown = this.self.thrown.append(t);
                 this.self.type.asMethodType().thrown
                         = this.self.type.asMethodType().thrown.append(t.type);
