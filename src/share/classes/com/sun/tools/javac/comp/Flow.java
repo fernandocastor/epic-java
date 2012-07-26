@@ -15,7 +15,7 @@
  * accompanied this code).
  *
  * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
+ * 2 along with this work; if neot, write to the Free Software Foundation,
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
@@ -1159,7 +1159,7 @@ public class Flow extends TreeScanner {
         } else if (!chk.isUnchecked(pos, exc) &&
                 !isExceptionOrThrowable(exc) &&
                 !chk.intersects(exc, thrownInTry)) {
-            log.error(pos, "except.never.thrown.in.try", exc);
+            //log.error(pos, "except.never.thrown.in.try", exc);
         } else if (allowImprovedCatchAnalysis) {
             List<Type> catchableThrownTypes = chk.intersect(List.of(exc), thrownInTry);
             // 'catchableThrownTypes' cannnot possibly be empty - if 'exc' was an

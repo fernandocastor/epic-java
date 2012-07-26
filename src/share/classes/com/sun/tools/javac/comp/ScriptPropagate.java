@@ -113,8 +113,9 @@ public class ScriptPropagate {
     }
 
     static private void dumpPath(String s) {
+        //System.out.println("Dump: " + s);
         try {
-            String[] cmd = {"pjavac-path", s};
+            String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-path", s};
 
             Runtime runtime = Runtime.getRuntime();
             Process process = runtime.exec(cmd);
@@ -138,7 +139,7 @@ public class ScriptPropagate {
 
         //System.out.println(s);
         try {
-            String[] cmd = {"pjavac-script", s};
+            String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-script", s};
 
             Runtime runtime = Runtime.getRuntime();
             Process process = runtime.exec(cmd);

@@ -751,16 +751,28 @@ public class Attr extends JCTree.Visitor {
            Type site = dirtyAttrib(s.selected, env, VAL | TYP, Infer.anyPoly);
 
             ListBuffer<Type> argtypes = new ListBuffer<Type>();
-            for(JCVariableDecl p: tree.params) {
-                argtypes.add(attribTree(p, env, VAL | TYP, Infer.anyPoly));
+            if (tree.params != null) {
+                for(JCVariableDecl p: tree.params) {
+                    argtypes.add(attribTree(p, env, VAL | TYP, Infer.anyPoly));
+                }
             }
 
 
             Name name = s.name;
             DiagnosticPosition pos = tree.pos();
-            s.sym = rs.resolveQualifiedMethod(
-                            pos, env, site.tsym, site, name,
-                            tree.getArgTypes(), pt.getTypeArguments(), false);
+            if (tree.params != null) {
+                s.sym = rs.resolveQualifiedMethod(
+                                pos, env, site.tsym, site, name,
+                                tree.getArgTypes(), pt.getTypeArguments(), false);
+            } else {            
+                for (Scope.Entry et = site.tsym.members().lookup(name);
+                    et.scope != null;
+                     et = et.next()) {
+                    if (et.sym.kind == MTH && (et.sym.flags_field & SYNTHETIC) == 0) {
+                        tree.syms.add(et.sym);
+                    }
+                }
+            }
         }
     }
 
@@ -775,8 +787,11 @@ public class Attr extends JCTree.Visitor {
         //using localEnv instead of env, ...)
         Env<AttrContext> localEnv = env.dup(tree, env.info.dup());
         ListBuffer<Type> argtypes = new ListBuffer<Type>();
-        for(JCVariableDecl p: tree.params) {
-            argtypes.add(attribStat(p, localEnv));
+        
+        if (tree.params != null) { //can be null if is (*)
+            for(JCVariableDecl p: tree.params) {
+                argtypes.add(attribStat(p, localEnv));
+            }
         }
 
         int skind = VAL | TYP;
@@ -788,8 +803,19 @@ public class Attr extends JCTree.Visitor {
         //so we workaround access policy
         Name name = tree.selector.name;
         DiagnosticPosition pos = tree.pos();
-        tree.sym = tree.selector.sym = rs.resolveQualifiedMethod(pos, env, site.tsym, site, name,
-                    tree.getArgTypes(), pt.getTypeArguments(), false);
+        
+        if (tree.params != null) {
+            tree.sym = tree.selector.sym = rs.resolveQualifiedMethod(pos, env, site.tsym, site, name,
+                        tree.getArgTypes(), pt.getTypeArguments(), false);
+        } else {            
+            for (Scope.Entry e = site.tsym.members().lookup(name);
+                e.scope != null;
+                 e = e.next()) {
+                if (e.sym.kind == MTH && (e.sym.flags_field & SYNTHETIC) == 0) {
+                    tree.syms.add(e.sym);
+                }
+            }
+        }
     }
 
     public void visitMethodDef(JCMethodDecl tree) {

@@ -556,6 +556,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         public JCFieldAccess selector;
         public List<JCVariableDecl> params;
         public Symbol sym;
+        public ListBuffer<Symbol> syms;
         public boolean direct;
 
         protected JCPropagateMethodSimple(JCExpression clazz,
@@ -565,12 +566,14 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
             //maybe not really clazz.pos, but better then left it zero'd
             this.selector.pos = clazz.pos;
             this.params = params;
+            this.syms = new ListBuffer<Symbol>();
         }
 
         protected JCPropagateMethodSimple(JCFieldAccess selec,
                                           List<JCVariableDecl> params) {
             this.selector = selec;
             this.params = params;
+            this.syms = new ListBuffer<Symbol>();
         }
 
         public JCExpression getSelector() {
@@ -643,6 +646,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         public List<? extends JCExpression> selectors;
         public List<JCVariableDecl> params;
         public boolean direct;
+        public ListBuffer<Symbol> syms;
 
         protected JCPropagateMethodPolym(List<JCExpression> subs,
                                          JCExpression sup,
@@ -663,6 +667,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
             this.subs = subs;
             this.sup = sup;
             this.params = params;
+            this.syms = new ListBuffer<Symbol>();
         }
 
         protected JCPropagateMethodPolym(List<JCExpression> subs,
@@ -673,6 +678,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
             this.sup = sup;
             this.selectors = selec;
             this.params = params;
+            this.syms = new ListBuffer<Symbol>();
         }
 
 

@@ -2413,12 +2413,13 @@ public class JavacParser implements Parser {
     public Pair<JCExpression, Name> propagateQualident() {
         Name name = ident();
         JCExpression t = null;
-        while (S.token() == DOT) {
+        do {            
+            accept(DOT);
             int pos = S.pos();
             t = t == null ? toP(F.at(S.pos()).Ident(name)) : toP(F.at(pos).Select(t, name));
-            S.nextToken();
             name = ident();
-        }
+            
+        } while (S.token() == DOT);
         return new Pair<JCExpression, Name>(t, name);
     }
 
@@ -2426,6 +2427,13 @@ public class JavacParser implements Parser {
         ListBuffer<JCVariableDecl> params = new ListBuffer<JCVariableDecl>();
         JCVariableDecl lastParam = null;
         accept(LPAREN);
+        
+        if (S.token() == STAR) {
+            accept(STAR);
+            accept(RPAREN);
+            return null;
+        }
+        
         if (S.token() != RPAREN) {
             params.append(lastParam = propagateSignatureParameter());
             while ((lastParam.mods.flags & Flags.VARARGS) == 0 && S.token() == COMMA) {

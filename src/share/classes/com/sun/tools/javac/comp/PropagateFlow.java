@@ -46,6 +46,77 @@ class OverridingTriple {
     }
 }
 
+class MethodNode {
+    public List<JCTree.JCMethodDecl> methods;
+    public JCTree.JCMethodDecl method;
+    public JCTree.JCMethodDecl baseMethod;
+    public List<MethodNode> orMethods;    
+    public boolean isPolym;
+    public boolean isStar;
+    public boolean isOrd;
+    
+    public MethodNode(JCTree.JCMethodDecl method) {
+        this.methods = null;
+        this.method = method;
+        this.baseMethod = null;
+        this.orMethods = null;
+        this.isPolym = false;
+        this.isStar = false;
+        this.isOrd = false;        
+    }
+    
+    public MethodNode(List<JCTree.JCMethodDecl> methods, boolean isPolym, boolean isStar) {
+        this.methods = methods;
+        this.method = null;
+        this.baseMethod = methods.size() > 0 ? methods.get(0) : null;
+        this.orMethods = null;
+        this.isPolym = isPolym;
+        this.isStar = isStar;
+        this.isOrd = false;        
+    }   
+    
+    public MethodNode(List<MethodNode> orMethods) {
+        this.methods = null;
+        this.method = null;
+        this.baseMethod = null;
+        this.orMethods = orMethods;
+        this.isPolym = false;
+        this.isOrd = true;        
+    }
+    
+    public List<JCTree.JCMethodDecl> getPolySubs() {
+        return this.methods.subList(1, this.methods.size());
+    }
+           
+    public MethodNode match(JCTree.JCMethodDecl m) {
+        MethodNode ret = null;
+        if (this.isOrd) {
+            for (MethodNode n : this.orMethods) {
+                if ((ret = n.match(m)) != null) {
+                    return ret;
+                }
+            }
+        } else if (this.isStar) {
+            for (JCTree.JCMethodDecl mt : this.methods) {
+                if (mt.sym == m.sym) {
+                    return this;
+                }
+            }            
+        } else {
+            if (this.isPolym) {
+                if (this.baseMethod.sym == m.sym) {
+                    return this;
+                }
+            } else {
+                if (this.method.sym == m.sym) {
+                    return this;
+                }
+            }
+        }
+        return null;
+    }
+}
+
 public class PropagateFlow extends TreeScanner {
 
     //every tree has this thing...
@@ -135,18 +206,24 @@ public class PropagateFlow extends TreeScanner {
 
     }
 
-    List<JCTree.JCMethodDecl> lookupMethods(JCTree.JCPropagateMethodSimple m) {
+    MethodNode lookupMethods(JCTree.JCPropagateMethodSimple m) {
         JCTree.JCClassDecl clazz = getClassForType(m.selector.selected.type);
 
         if (clazz == null) return null;
 
-        JCTree.JCMethodDecl method = getOwnMethod(clazz, m.sym);
-        List<JCTree.JCMethodDecl> lst = new ArrayList<JCTree.JCMethodDecl>();
-        if (method == null) {
-            method = getSuperMethod(clazz, m.sym);
+        if (m.sym != null) {
+            JCTree.JCMethodDecl method = getOwnMethod(clazz, m.sym);        
+            if (method == null) {
+                method = getSuperMethod(clazz, m.sym);
+            }
+            if (method != null) {
+                return new MethodNode(method);
+            }
+        } else {
+            List<JCTree.JCMethodDecl> ms = getOwnMethods(clazz, m.syms.toList());
+            return new MethodNode(ms, false, true);
         }
-        lst.add(method);
-        return lst;
+        return null;
     }
 
     public int hierarchyDistance(JCTree.JCMethodDecl sub, JCTree.JCMethodDecl base)
@@ -197,7 +274,7 @@ public class PropagateFlow extends TreeScanner {
         return ret;
     }
 
-    List<JCTree.JCMethodDecl> lookupMethods(JCTree.JCPropagateMethodPolym m)
+    MethodNode lookupMethods(JCTree.JCPropagateMethodPolym m)
         throws UnrelatedClassException {
 
         List<JCTree.JCMethodDecl> ret = new ArrayList<JCTree.JCMethodDecl>();
@@ -207,16 +284,20 @@ public class PropagateFlow extends TreeScanner {
 
             if (clazz == null) continue; //ignore ast-unreachable classes
 
-            JCTree.JCMethodDecl method = getOwnMethod(clazz, f.sym);
-            if (method == null) {
-                log.error(this.currentPropagate.pos(),
+            if (f.sym != null) {
+                JCTree.JCMethodDecl method = getOwnMethod(clazz, f.sym);
+                if (method == null) {
+                    log.error(this.currentPropagate.pos(),
                         "propagate.no.method.found",
                         f.name.toString(), clazz.name.toString());
+                } else {
+                    ret.add(method);
+                }
             } else {
-                ret.add(method);
-            }
+                throw new RuntimeException("Unsuported star params in poly node");
+            }                
         }
-        return ret.isEmpty() ? null : sortHierarchy(ret);
+        return ret.isEmpty() ? null : new MethodNode(sortHierarchy(ret), true, false);
     }
 
     JCTree.JCMethodDecl lookupMethod(JCNewClass nclass) {
@@ -287,6 +368,14 @@ public class PropagateFlow extends TreeScanner {
         }
         return null;
     }
+    
+    List<JCTree.JCMethodDecl> getOwnMethods(JCTree.JCClassDecl clazz, List<Symbol> syms) {
+        List<JCTree.JCMethodDecl> ret = new ArrayList<JCTree.JCMethodDecl>();
+        for(Symbol s : syms) {
+            ret.add(getOwnMethod(clazz, s));
+        }
+        return ret;
+    }
 
     private List<Target> targetsLeft;
     private Target nextTargets;
@@ -296,122 +385,134 @@ public class PropagateFlow extends TreeScanner {
     protected List<OverridingTriple> overridingCheckList;
 
     class Target {
-        private List<JCTree.JCMethodDecl> _methods;
-        private List<List<JCTree.JCMethodDecl>> _oredMethods;
+        private MethodNode methodNode;
         public boolean direct;
-        public boolean ored;
-        public List<JCTree.JCMethodDecl> matched;
 
-        public Target(List<JCTree.JCMethodDecl> methods, boolean direct) {
-            this._methods = methods;
+        public MethodNode matched; //cache
+        
+        public Target(MethodNode methodNode, boolean direct) {
+            this.methodNode = methodNode;
             this.direct = direct;
-            this.ored = false;
-        }
-
-        public Target(List<List<JCTree.JCMethodDecl>> methods, boolean direct, boolean _) {
-            this._oredMethods = methods;
-            this.direct = direct;
-            this.ored = true;
         }
 
         public boolean match(JCTree.JCMethodDecl m) {
-            if (this.ored) {
-                for (List<JCTree.JCMethodDecl> lst : _oredMethods) {
-                    if (m.sym == lst.get(0).sym) {
-                        this.matched = lst;
-                        return true;
-                    }
-                }
-                return false;
-            } else {
-               if (m.sym == this._methods.get(0).sym) {
-                   this.matched = this._methods;
-                   return true;
-               } else {
-                   return false;
-               }
-            }
+            this.matched = this.methodNode.match(m);
+            return this.matched != null;
+        }
+        
+        boolean isPolym() {
+            return this.methodNode.isPolym;
+        }
+        
+        List<JCTree.JCMethodDecl> getPolySubs() {
+            return this.methodNode.getPolySubs();
         }
 
-        boolean isPolym() {
-            return (this.matched != null && this.matched.size() > 1) ||
-                   (!this.ored && this._methods.size() > 1);
+        boolean isOred() {
+            return this.methodNode.isOrd;
+        }
+
+        boolean isStar() {
+            return this.methodNode.isStar;
+        }
+        
+        List<MethodNode> getOreds() {
+            return this.methodNode.orMethods;
+        }
+
+        List<JCTree.JCMethodDecl> getBaseAndSubs() {
+            return this.methodNode.methods;
         }
 
         List<JCTree.JCMethodDecl> getMethods() {
-            return this._methods;
+            return this.methodNode.methods;
         }
-
-        List<JCTree.JCMethodDecl> getHeadlessMethods() {
-            return this._methods.subList(1, this._methods.size());
+         
+        JCTree.JCMethodDecl getBase() {
+            return this.methodNode.baseMethod;
         }
-        List<JCTree.JCMethodDecl> getHeadlessMatches() {
-        return this.matched.subList(1, this.matched.size());
+        
+        JCTree.JCMethodDecl getMethod() {
+            return this.methodNode.method;
         }
-
-        JCTree.JCMethodDecl getHead() {
-            return this._methods.get(0);
-        }
-        boolean isOred() {
-            return this.ored;
-        }
-
-        List<JCTree.JCMethodDecl> getOreds() {
-            List<JCTree.JCMethodDecl> ret = new ArrayList<JCTree.JCMethodDecl>();
-            for (List<JCTree.JCMethodDecl> lst : _oredMethods) {
-                ret.addAll(lst);
-            }
-            return ret;
-        }
+        
+//
+//        boolean isPolym() {
+//            return (this.matched != null && this.matched.size() > 1) ||
+//                   (!this.ored && this._methods.size() > 1);
+//        }
+//
+//        List<JCTree.JCMethodDecl> getMethods() {
+//            return this._methods;
+//        }
+//
+//        List<JCTree.JCMethodDecl> getHeadlessMethods() {
+//            return this._methods.subList(1, this._methods.size());
+//        }
+//        List<JCTree.JCMethodDecl> getHeadlessMatches() {
+//        return this.matched.subList(1, this.matched.size());
+//        }
+//
+//        JCTree.JCMethodDecl getHead() {
+//            return this._methods.get(0);
+//        }
+//
+//        List<JCTree.JCMethodDecl> getOreds() {
+//            List<JCTree.JCMethodDecl> ret = new ArrayList<JCTree.JCMethodDecl>();
+//            for (List<JCTree.JCMethodDecl> lst : _oredMethods) {
+//                ret.addAll(lst);
+//            }
+//            return ret;
+//        }
     }
 
     public void loadMethods(JCTree m) throws UnrelatedClassException {
         boolean direct = false;
-        List<JCTree.JCMethodDecl> methods = null;
+        MethodNode methodNode;
         if (m.getTag() == JCTree.PROPAGATE_METHOD_SIMPLE) {
             JCTree.JCPropagateMethodSimple ps = (JCTree.JCPropagateMethodSimple)m;
-            methods = lookupMethods(ps);
+            methodNode = lookupMethods(ps);
             direct = ps.direct;
 
             //some propagate nodes wheren't found
             //maybe due to previous errors or because
             //there is no AST in the envs for the specified method
             //...so add unless...
-            if (methods != null && !methods.isEmpty()) {
-                this.targetsLeft.add(new Target(methods, direct));
+            if (methodNode != null ) {
+                this.targetsLeft.add(new Target(methodNode, direct));
             }
         } else if (m.getTag() == JCTree.PROPAGATE_METHOD_POLYM) {
             JCTree.JCPropagateMethodPolym pm = (JCTree.JCPropagateMethodPolym)m;
             //important: the first item in this list
             //is the base type "C" in the decl "A,B<:C".
             //we will use this specifically later on
-            methods = lookupMethods(pm);
+            methodNode = lookupMethods(pm);
             direct = pm.direct;
 
             //some propagate nodes wheren't found
             //maybe due to previous errors or because
             //there is no AST in the envs for the specified method
             //...so add unless...
-            if (methods != null && !methods.isEmpty()) {
-                this.targetsLeft.add(new Target(methods, direct));
+            if (methodNode != null) {
+                this.targetsLeft.add(new Target(methodNode, direct));
             }
         } else if (m.getTag() == JCTree.PROPAGATE_METHOD_OR) {
             JCTree.JCPropagateMethodOr or  = (JCTree.JCPropagateMethodOr)m;
             direct = or.direct;
-            List<List<JCTree.JCMethodDecl>> oredMethods = new ArrayList<List<JCTree.JCMethodDecl>>();
+            List<MethodNode> oredMethods = new ArrayList<MethodNode>();
             for (JCTree t : or.ored) {
                 if (t.getTag() == JCTree.PROPAGATE_METHOD_SIMPLE) {
                     JCTree.JCPropagateMethodSimple tx = (JCTree.JCPropagateMethodSimple)t;
-                    methods = lookupMethods(tx);
+                    methodNode = lookupMethods(tx);
                 } else if (t.getTag() == JCTree.PROPAGATE_METHOD_POLYM) {
                     JCTree.JCPropagateMethodPolym tm = (JCTree.JCPropagateMethodPolym)t;
-                    methods = lookupMethods(tm);
+                    methodNode = lookupMethods(tm);
                 } else {
                     throw new RuntimeException("UOPS!!! this is a bug");
                 }
-                oredMethods.add(methods);
+                oredMethods.add(methodNode);
             }
-            this.targetsLeft.add(new Target(oredMethods, direct, true));
+            this.targetsLeft.add(new Target(new MethodNode(oredMethods), direct));
         } else {
             throw new RuntimeException("UOPS! this is a bug");
         }
@@ -432,18 +533,34 @@ public class PropagateFlow extends TreeScanner {
 
         if (this.targetsLeft.isEmpty()) { //single node
             if (initials.isPolym()) {
-                for (JCTree.JCMethodDecl m : initials.getHeadlessMethods()) {
-                    currentTree = new PathTree(this.currentPropagate, m, initials.getHead(),p.thrown);
+                for (JCTree.JCMethodDecl m : initials.getPolySubs()) {
+                    currentTree = new PathTree(this.currentPropagate, m, initials.getBase(),p.thrown);
                     currentTree.setupThrowPath();
-
                 }
             } else if (initials.isOred()) {
-                for (JCTree.JCMethodDecl m : initials.getOreds()) {
+                for (MethodNode node : initials.getOreds()) {
+                    if (node.isPolym) {
+                        for (JCTree.JCMethodDecl m : node.getPolySubs()) {
+                            currentTree = new PathTree(this.currentPropagate, m, node.baseMethod,p.thrown);
+                            currentTree.setupThrowPath();
+                        }
+                    } else if (node.isStar) {
+                        for (JCTree.JCMethodDecl m : node.methods) {
+                            currentTree = new PathTree(this.currentPropagate, m, p.thrown);
+                            currentTree.setupThrowPath();
+                        }                        
+                    } else {
+                        currentTree = new PathTree(this.currentPropagate, node.method, p.thrown);
+                        currentTree.setupThrowPath();
+                    }
+                }
+            } else if (initials.isStar()) {
+                for (JCTree.JCMethodDecl m : initials.getMethods()) {
                     currentTree = new PathTree(this.currentPropagate, m, p.thrown);
                     currentTree.setupThrowPath();
-                }
+                }                
             } else {
-                currentTree = new PathTree(this.currentPropagate, initials.getHead(), p.thrown);
+                currentTree = new PathTree(this.currentPropagate, initials.getMethod(), p.thrown);
                 currentTree.setupThrowPath();
             }
         } else {
@@ -451,20 +568,39 @@ public class PropagateFlow extends TreeScanner {
 
             if (initials.isOred()) { //handling site is ored
                 boolean lastFound = false;
-                for (JCTree.JCMethodDecl m : initials.getOreds()) {
-                    this.currentTree = new PathTree(this.currentPropagate, m, p.thrown);
-                    buildpath(this.currentTree.node);
-                    lastFound = lastFound || this.currentTree.atLeastOnePathFound;
-                    //this.currentTree.atLeastOnePathFound = this.currentTree.atLeastOnePathFound || false;
+                for (MethodNode node : initials.getOreds()) {
+                    if (node.isPolym) {                        
+                        for (JCTree.JCMethodDecl m : node.getPolySubs()) {
+                            this.currentTree = new PathTree(this.currentPropagate, m, node.baseMethod, p.thrown);
+                            buildpath(this.currentTree.node);
+                            lastFound = lastFound || this.currentTree.atLeastOnePathFound;
+                        }
+                    } else if (node.isStar) {
+                        for (JCTree.JCMethodDecl m : node.methods) {
+                            this.currentTree = new PathTree(this.currentPropagate, m, p.thrown);
+                            buildpath(this.currentTree.node);
+                            lastFound = lastFound || this.currentTree.atLeastOnePathFound;
+                        }                        
+                    } else {
+                        this.currentTree = new PathTree(this.currentPropagate, node.method, p.thrown);
+                        buildpath(this.currentTree.node);
+                        lastFound = lastFound || this.currentTree.atLeastOnePathFound;
+                        //this.currentTree.atLeastOnePathFound = this.currentTree.atLeastOnePathFound || false;
+                    }
                 }
                 this.currentTree.atLeastOnePathFound = lastFound;
             } else if (initials.isPolym()) { //handling site is polym
-                for (JCTree.JCMethodDecl m : initials.getHeadlessMethods()) {
-                    this.currentTree = new PathTree(this.currentPropagate, m, initials.getHead(), p.thrown);
+                for (JCTree.JCMethodDecl m : initials.getPolySubs()) {
+                    this.currentTree = new PathTree(this.currentPropagate, m, initials.getBase(), p.thrown);
                     buildpath(this.currentTree.node);
                 }
+            } else if (initials.isStar()) { 
+                for (JCTree.JCMethodDecl m : initials.getMethods()) {
+                    this.currentTree = new PathTree(this.currentPropagate, m, p.thrown);
+                    buildpath(this.currentTree.node);
+                }                
             } else { //handling site is simple
-                this.currentTree = new PathTree(this.currentPropagate, initials.getHead(), p.thrown);
+                this.currentTree = new PathTree(this.currentPropagate, initials.getMethod(), p.thrown);
                 buildpath(this.currentTree.node);
             }
 
@@ -525,36 +661,61 @@ public class PropagateFlow extends TreeScanner {
             //lets do nothing
         } else if (matchTargets(found)) { //found is propagate node
             if (this.targetsLeft.isEmpty()) { //we found the last propagate node: full match
-                PathNode bk = currentTree.node;
-                currentTree.setRoot(found, this.nextTargets.matched.get(0));
-                currentTree.setupThrowPath();
-                currentTree.node = bk;
-                //a polym node might be the first (raising-site) node. exhaust it:
-                if (this.nextTargets.isPolym()) {
-                    for (JCTree.JCMethodDecl met : this.nextTargets.getHeadlessMatches()) {
+                
+                if (!this.nextTargets.matched.isPolym && !this.nextTargets.matched.isStar) { //single node                    
+                    PathNode bk = currentTree.node;
+                    currentTree.setRoot(found, this.nextTargets.matched.method);
+                    currentTree.setupThrowPath();
+                    currentTree.node = bk;
+                } else if (this.nextTargets.matched.isPolym) {                    
+                    //a polym node might be the first (raising-site) node. exhaust it:
+                    PathNode bk = currentTree.node;
+                    
+                    for (JCTree.JCMethodDecl met : this.nextTargets.matched.getPolySubs()) {
                         currentTree.node = bk;
                         currentTree.setRoot(
                                 met,
-                                this.nextTargets.matched.get(0));
+                                this.nextTargets.matched.baseMethod);
                         currentTree.setupThrowPath();
                     }
+                    currentTree.node = bk;
+                } else if (this.nextTargets.matched.isStar) {
+                    PathNode bk = currentTree.node;
+                    
+                    for (JCTree.JCMethodDecl met : this.nextTargets.matched.methods) {
+                        currentTree.node = bk;
+                        currentTree.setRoot(met);
+                        currentTree.setupThrowPath();
+                    }
+                    currentTree.node = bk;                    
+                } else {
+                    throw new RuntimeException("UOPS!1! Shouldnt be here");
                 }
+                    
             } else { //intermediary match
                 //-load the next nextTargets
                 //-proceed exploration of each method in each body of each method matched
                 Target tgs = this.nextTargets;
                 this.nextTargets = targetsLeft.remove(targetsLeft.size()-1);
-                if (tgs.isPolym()) {
+                if (tgs.matched.isPolym) {
                     //for all subtypes+supertype X, navigate on X:m()'s body
-                    for (JCTree.JCMethodDecl t : tgs.getMethods()) {
+                    for (JCTree.JCMethodDecl t : tgs.matched.methods) {
                        PathNode bk = currentTree.node;
-                       currentTree.setRoot(t, tgs.getHead());
+                       currentTree.setRoot(t, tgs.matched.baseMethod);
                        buildpath(currentTree.node);
                        currentTree.node = bk;
                     }
+                } else if (tgs.matched.isStar) {
+                    //for all (*), navigate on their bodies
+                    for (JCTree.JCMethodDecl t : tgs.matched.methods) {
+                       PathNode bk = currentTree.node;
+                       currentTree.setRoot(t);
+                       buildpath(currentTree.node);
+                       currentTree.node = bk;
+                    }                    
                 } else {
                     PathNode bk = currentTree.node;
-                    currentTree.setRoot(tgs.matched.get(0));
+                    currentTree.setRoot(tgs.matched.method);
                     buildpath(currentTree.node);
                     currentTree.node = bk;
                 }
@@ -608,7 +769,7 @@ public class PropagateFlow extends TreeScanner {
         void setupThrowPath() {
             this.atLeastOnePathFound = true;
             ScriptPropagate.addPath(this.currentPropagate.thrown.toString(), this.pathAsString(this.node));
-            System.out.println("Found path: " + this.pathAsString(this.node));
+            //System.out.println("Found path: " + this.pathAsString(this.node));
 
 
             this.node.setupThrows(thrown);

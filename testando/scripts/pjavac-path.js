@@ -24,8 +24,8 @@ db.open(function(error, c) {
 
 
 function start() {
-  //register_paths();
-  compare_paths();
+  register_paths();
+  //compare_paths();
 }
 
 function compare_paths() {

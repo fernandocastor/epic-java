@@ -595,7 +595,7 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         Env<AttrContext> classEnv = dirtyAttrib(tree.sup, env, TYP, Infer.anyPoly);
 
 
-        for (List<? extends JCTree> l = tree.params; l.nonEmpty(); l = l.tail) {
+        for (List<? extends JCTree> l = tree.params; l != null && l.nonEmpty(); l = l.tail) {
             /*Env<AttrContext> local= */ dirtyAttrib(l.head, classEnv, VAL, Infer.anyPoly);
             //list of exceptions in channels is implemented
             //by duplicating the propagating AST.
@@ -612,7 +612,7 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         //access policy
         Env<AttrContext> classEnv = dirtyAttrib(tree.selector.selected, env, TYP, Infer.anyPoly);
 
-        for (List<? extends JCTree> l = tree.params; l.nonEmpty(); l = l.tail) {
+        for (List<? extends JCTree> l = tree.params; l != null && l.nonEmpty(); l = l.tail) {
             /*Env<AttrContext> local = */ dirtyAttrib(l.head, classEnv, VAL, Infer.anyPoly);
 
             //list of exceptions in channels is implemented
