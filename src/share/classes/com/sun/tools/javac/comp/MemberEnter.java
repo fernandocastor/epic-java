@@ -532,7 +532,12 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         switch (tree.getTag()) {
             case JCTree.VARDEF:
                 JCVariableDecl v = (JCVariableDecl)tree;
-                return dirtyAttrib(v.vartype, e, TYP, pt);
+                Env<AttrContext> ret = dirtyAttrib(v.vartype, e, TYP, pt);
+                Scope enclScope = enter.enterScope(env);
+                VarSymbol vs =new VarSymbol(0, v.name, v.vartype.type, enclScope.owner);
+                vs.flags_field = chk.checkFlags(tree.pos(), v.mods.flags, vs, tree);
+                v.sym = vs;
+                return ret;
             case JCTree.TYPEAPPLY:
                 JCTypeApply t = (JCTypeApply)tree;
                 local = dirtyAttrib(t.clazz, e, pkind, pt);
@@ -613,15 +618,15 @@ public class MemberEnter extends JCTree.Visitor implements Completer {
         Env<AttrContext> classEnv = dirtyAttrib(tree.selector.selected, env, TYP, Infer.anyPoly);
 
         for (List<? extends JCTree> l = tree.params; l != null && l.nonEmpty(); l = l.tail) {
-            /*Env<AttrContext> local = */ dirtyAttrib(l.head, classEnv, VAL, Infer.anyPoly);
+            Env<AttrContext> local =  dirtyAttrib(l.head, classEnv, VAL, Infer.anyPoly);
 
             //list of exceptions in channels is implemented
             //by duplicating the propagating AST.
             //if we memberEnter twice on a list of parameters
             //we will have compile error for duplicated "arg0"
-            if (TreeInfo.symbolFor(l.head) == null) {
-                memberEnter(l.head, env);
-            }
+            //if (TreeInfo.symbolFor(l.head) == null) {
+            //    memberEnter(l.head, env);
+            //}
         }
 
     }
