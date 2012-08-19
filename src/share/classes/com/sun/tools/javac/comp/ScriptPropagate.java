@@ -32,6 +32,10 @@ public class ScriptPropagate {
 
     public static HashMap<String, List<String>> paths = new HashMap<String,List<String>>();
     
+    public static boolean BUILDING_STAGE = true;
+    public static boolean SHOULD_COUNT_THROWS = false;
+    public static boolean REGISTER_PATHS = true;
+
     public static void addPath(String prop, String path) {
         List<String> lst;
         if (paths.containsKey(prop)) {
@@ -113,10 +117,22 @@ public class ScriptPropagate {
         execute(s);
     }
 
+
+    public static void throwing(Env<AttrContext> e, ThrowCounter tcounter) {
+        //counts throws in "throws" clean java sigs
+        tcounter.count(e);
+    }
+
     public static void throwing(String method, String type) {
+        //counts throws from propagates
+
         String s = method + "#" + type;
+
+        if (!SHOULD_COUNT_THROWS) return;
+
         try {
             String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-throw", s};
+            //String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-throw-count", s};
 
             Runtime runtime = Runtime.getRuntime();
             Process process = runtime.exec(cmd);
@@ -135,8 +151,8 @@ public class ScriptPropagate {
         //this really doesn't matter now...
         //the above .throwing() is better
         
-        if (true) return;
-
+        //System.out.println(s);
+        s = REGISTER_PATHS ? "register**" + s : "compare**"+s;
         try {
             String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-path", s};
 
@@ -160,8 +176,10 @@ public class ScriptPropagate {
         }
         lst.add(s);
         
+        if (!BUILDING_STAGE) {
+            return;
+        }
         //System.out.println(s);
-        if (true) return;
         try {
             String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-script", s};
 

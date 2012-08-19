@@ -381,6 +381,7 @@ public class PropagateFlow extends TreeScanner {
     private Target nextTargets;
     private PathTree currentTree;
     private JCTree.JCPropagate currentPropagate;
+    private ArrayList<Symbol.MethodSymbol> scannedMethods;
 
     protected List<OverridingTriple> overridingCheckList;
 
@@ -523,6 +524,7 @@ public class PropagateFlow extends TreeScanner {
         this.currentPropagate = p;
 
         this.targetsLeft = new ArrayList<Target>();
+        this.scannedMethods = new ArrayList<Symbol.MethodSymbol>();
 
         for(JCTree m : p.nodes) {
             loadMethods(m);
@@ -622,6 +624,14 @@ public class PropagateFlow extends TreeScanner {
             return true;
         } else {
             return checkRecursion(m, node.parent);
+        }
+    }
+
+    public int pathSize(PathNode node, int size) {
+        if (node == null) {
+            return size;
+        } else {
+            return pathSize(node.parent, size+1);
         }
     }
 
@@ -828,7 +838,7 @@ public class PropagateFlow extends TreeScanner {
                         new OverridingTriple(clazz, uppermost, t, this.currentPropagate.pos()));
 
                 //add exception type to thrown list
-                ScriptPropagate.throwing(this.self.sym.owner + "::"+this.self.sym, t.type.toString());
+                //ScriptPropagate.throwing(this.self.sym.owner + "::"+this.self.sym, t.type.toString());
                 
                 this.self.thrown = this.self.thrown.append(t);
                 this.self.type.asMethodType().thrown
@@ -844,6 +854,9 @@ public class PropagateFlow extends TreeScanner {
                                         getClassForType(current.owner.type),
                                            current, name);
                         if (current != null) {
+                            //add exception type to thrown list
+                            //ScriptPropagate.throwing(current.owner + "::"+current, t.type.toString());
+
                             current.type.asMethodType().thrown =
                                     current.type.asMethodType().thrown.append(t.type);
 

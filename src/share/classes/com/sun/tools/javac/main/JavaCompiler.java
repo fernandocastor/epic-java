@@ -254,6 +254,7 @@ public class JavaCompiler implements ClassReader.SourceCompleter {
     protected Attr attr;
 
     protected PropagateFlow pflow;
+    protected ThrowCounter tcounter;
 
 
     /** The attributor.
@@ -353,6 +354,7 @@ public class JavaCompiler implements ClassReader.SourceCompleter {
         source = Source.instance(context);
         attr = Attr.instance(context);
         pflow = PropagateFlow.instance(context);
+        tcounter = ThrowCounter.instance(context);
         chk = Check.instance(context);
         gen = Gen.instance(context);
         flow = Flow.instance(context);
@@ -887,6 +889,7 @@ public class JavaCompiler implements ClassReader.SourceCompleter {
                     pflow.analysePropagate(envs);
                 }
                 for (Env<AttrContext> e : envs) {
+                    ScriptPropagate.throwing(e, tcounter);
                     if(e.tree.getTag() != JCTree.PROPAGATE) {
                         generate(desugar(flow(e)));
                     }
