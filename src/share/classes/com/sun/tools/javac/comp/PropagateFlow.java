@@ -381,7 +381,6 @@ public class PropagateFlow extends TreeScanner {
     private Target nextTargets;
     private PathTree currentTree;
     private JCTree.JCPropagate currentPropagate;
-    private ArrayList<Symbol.MethodSymbol> scannedMethods;
 
     protected List<OverridingTriple> overridingCheckList;
 
@@ -524,7 +523,7 @@ public class PropagateFlow extends TreeScanner {
         this.currentPropagate = p;
 
         this.targetsLeft = new ArrayList<Target>();
-        this.scannedMethods = new ArrayList<Symbol.MethodSymbol>();
+        //System.err.println("+++++++++ doing: " + p.toString());
 
         for(JCTree m : p.nodes) {
             loadMethods(m);
@@ -591,6 +590,7 @@ public class PropagateFlow extends TreeScanner {
                     }
                 }
                 this.currentTree.atLeastOnePathFound = lastFound;
+                //System.err.println("NOOOOOOO " + this.currentTree.atLeastOnePathFound);
             } else if (initials.isPolym()) { //handling site is polym
                 for (JCTree.JCMethodDecl m : initials.getPolySubs()) {
                     this.currentTree = new PathTree(this.currentPropagate, m, initials.getBase(), p.thrown);
@@ -607,7 +607,10 @@ public class PropagateFlow extends TreeScanner {
             }
 
             if (!this.currentTree.atLeastOnePathFound) {
-                log.error(p.pos(),
+                //System.err.println("----------- > We are DOOMEd" + this.currentPropagate);
+                //System.err.println("zz We are DOOMEd" + p);
+                System.err.println("++++ propagate not built:" + this.currentPropagate);
+                log.error(this.currentPropagate.pos(),
                             "propagate.no.callgraph");
             }
         }
@@ -620,7 +623,7 @@ public class PropagateFlow extends TreeScanner {
     public boolean checkRecursion(JCTree.JCMethodDecl m, PathNode node) {
         if (node == null) {
             return false;
-        } else if (node.self.type == m.type) {
+        } else if (node.self.sym == m.sym) {
             return true;
         } else {
             return checkRecursion(m, node.parent);
@@ -666,25 +669,39 @@ public class PropagateFlow extends TreeScanner {
             //the 'm' method is not in any ast
             //Doing nothing == finding a dead end in the graph path.
             //lets do nothing.
+            return;
         } else if (checkRecursion(found, currentTree.node)) {
             //we already went that way...
             //lets do nothing
-        } else if (matchTargets(found)) { //found is propagate node
+            return;
+        } else if (this.currentTree.node.scannedMethods.contains(found)) {
+            //we were already here
+            //System.err.println("Already did: " + found.sym);
+            return;
+        }
+        //System.err.println("Adding: " + found.sym);
+        this.currentTree.node.scannedMethods.add(found);
+
+        if (matchTargets(found)) { //found is propagate node
+            //System.err.println("Matched: " + found.sym);
             if (this.targetsLeft.isEmpty()) { //we found the last propagate node: full match
-                
-                if (!this.nextTargets.matched.isPolym && !this.nextTargets.matched.isStar) { //single node                    
+                //System.err.println("Last propagate node: " + found.sym);
+                if (!this.nextTargets.matched.isPolym && !this.nextTargets.matched.isStar) { //single node
+                    //System.err.println("Last propagate node not poly nor star: setup throw path");
                     PathNode bk = currentTree.node;
                     currentTree.setRoot(found, this.nextTargets.matched.method);
                     currentTree.setupThrowPath();
                     currentTree.node = bk;
                     
                     if (this.nextTargets.isOred()) {
+                        //System.err.println("Last propagate node is ordered. keep going...");
                         PathNode bk1 = currentTree.node;
                         currentTree.setRoot(found, this.nextTargets.matched.method);
                         buildpath(currentTree.node);
                         currentTree.node = bk1;
                     }
                 } else if (this.nextTargets.matched.isPolym) {
+                    //System.err.println("Last propagate node is poly");
                     //a polym node might be the first (raising-site) node. exhaust it:
                     PathNode bk = currentTree.node;
                     currentTree.setRoot(found, this.nextTargets.matched.method);
@@ -700,6 +717,7 @@ public class PropagateFlow extends TreeScanner {
                     }
                     currentTree.node = bk;
                 } else if (this.nextTargets.matched.isStar) {
+                    //System.err.println("Last propagate node is star");
                     PathNode bk = currentTree.node;
                     
                     for (JCTree.JCMethodDecl met : this.nextTargets.matched.methods) {
@@ -789,6 +807,7 @@ public class PropagateFlow extends TreeScanner {
 
         void setupThrowPath() {
             this.atLeastOnePathFound = true;
+            //System.err.println("this.atLeastOnePathFound: " + this.atLeastOnePathFound);
             ScriptPropagate.addPath(this.currentPropagate.thrown.toString(), this.pathAsString(this.node));
             //System.out.println("Found path: " + this.pathAsString(this.node));
 
@@ -813,11 +832,14 @@ public class PropagateFlow extends TreeScanner {
         public JCTree.JCMethodDecl base; //polym base method z in {x,y <: _z_}
         public JCTree.JCPropagate currentPropagate;
 
+        public ArrayList<JCTree.JCMethodDecl> scannedMethods;
+
         public PathNode(JCTree.JCPropagate p, JCTree.JCMethodDecl m, PathNode parent) {
             this.currentPropagate = p;
             this.parent = parent;
             this.self = m;
             this.base = null;
+            this.scannedMethods = new ArrayList<JCTree.JCMethodDecl>();
         }
 
         public PathNode(JCTree.JCPropagate p, JCTree.JCMethodDecl m, JCTree.JCMethodDecl base, PathNode parent) {
@@ -825,6 +847,7 @@ public class PropagateFlow extends TreeScanner {
             this.parent = parent;
             this.self = m;
             this.base = base;
+            this.scannedMethods = new ArrayList<JCTree.JCMethodDecl>();
         }
 
         public void setupThrows(JCTree.JCExpression t) {
