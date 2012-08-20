@@ -186,10 +186,11 @@ public class PropagateFlow extends TreeScanner {
             }
         }
         checkOverriding();
-        ScriptPropagate.logPaths();
+        //ScriptPropagate.logPaths();
     }
 
-    void checkOverriding() {
+    boolean checkOverriding() {
+        boolean ret = true;
         //check overriding
         //if its a polym node, this.base is the base B in {... <: B}
         //we then check for overriden methods on B's superclasses.
@@ -201,9 +202,10 @@ public class PropagateFlow extends TreeScanner {
                 log.error(triple.pos,
                 "propagate.incompatible.throws",
                 triple.clazz.sym, triple.method.sym, triple.thrown.type);
+                ret = false;
             }
         }
-
+        return ret;
     }
 
     MethodNode lookupMethods(JCTree.JCPropagateMethodSimple m) {
@@ -389,10 +391,11 @@ public class PropagateFlow extends TreeScanner {
         public boolean direct;
 
         public MethodNode matched; //cache
-        
+        public ArrayList<JCTree.JCMethodDecl> scannedMethods;
         public Target(MethodNode methodNode, boolean direct) {
             this.methodNode = methodNode;
             this.direct = direct;
+            this.scannedMethods = new ArrayList<JCTree.JCMethodDecl>();
         }
 
         public boolean match(JCTree.JCMethodDecl m) {
@@ -674,15 +677,18 @@ public class PropagateFlow extends TreeScanner {
             //we already went that way...
             //lets do nothing
             return;
-        } else if (this.currentTree.node.scannedMethods.contains(found)) {
+        } else if (this.nextTargets.scannedMethods.contains(found)) {
             //we were already here
             //System.err.println("Already did: " + found.sym);
             return;
         }
-        //System.err.println("Adding: " + found.sym);
-        this.currentTree.node.scannedMethods.add(found);
+        System.out.println(this.nextTargets.methodNode.method.sym + " =?= " +
+                found.sym.owner + "::"+  found.sym);
+        this.nextTargets.scannedMethods.add(found);
+        //System.err.println("Size: " + this.currentTree.node.scannedMethods.size());
 
         if (matchTargets(found)) { //found is propagate node
+            this.nextTargets.scannedMethods = new ArrayList<JCTree.JCMethodDecl>();
             //System.err.println("Matched: " + found.sym);
             if (this.targetsLeft.isEmpty()) { //we found the last propagate node: full match
                 //System.err.println("Last propagate node: " + found.sym);
@@ -808,7 +814,7 @@ public class PropagateFlow extends TreeScanner {
         void setupThrowPath() {
             this.atLeastOnePathFound = true;
             //System.err.println("this.atLeastOnePathFound: " + this.atLeastOnePathFound);
-            ScriptPropagate.addPath(this.currentPropagate.thrown.toString(), this.pathAsString(this.node));
+            //ScriptPropagate.addPath(this.currentPropagate.thrown.toString(), this.pathAsString(this.node));
             //System.out.println("Found path: " + this.pathAsString(this.node));
 
 
@@ -832,14 +838,12 @@ public class PropagateFlow extends TreeScanner {
         public JCTree.JCMethodDecl base; //polym base method z in {x,y <: _z_}
         public JCTree.JCPropagate currentPropagate;
 
-        public ArrayList<JCTree.JCMethodDecl> scannedMethods;
-
+       
         public PathNode(JCTree.JCPropagate p, JCTree.JCMethodDecl m, PathNode parent) {
             this.currentPropagate = p;
             this.parent = parent;
             this.self = m;
             this.base = null;
-            this.scannedMethods = new ArrayList<JCTree.JCMethodDecl>();
         }
 
         public PathNode(JCTree.JCPropagate p, JCTree.JCMethodDecl m, JCTree.JCMethodDecl base, PathNode parent) {
@@ -847,7 +851,6 @@ public class PropagateFlow extends TreeScanner {
             this.parent = parent;
             this.self = m;
             this.base = base;
-            this.scannedMethods = new ArrayList<JCTree.JCMethodDecl>();
         }
 
         public void setupThrows(JCTree.JCExpression t) {
