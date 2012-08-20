@@ -1,0 +1,3 @@
+#!/bin/sh
+
+NODE_PATH=/usr/local/lib/node_modules/ /home/thiago/src/java_msc/testando/scripts/pjavac-throw-count.js  "$@"

@@ -32,34 +32,35 @@ public class ScriptPropagate {
 
     public static HashMap<String, List<String>> paths = new HashMap<String,List<String>>();
     
-    public static boolean BUILDING_STAGE = true;
+    public static boolean BUILDING_STAGE = false;
+
     public static boolean SHOULD_COUNT_THROWS = false;
-    public static boolean REGISTER_PATHS = true;
+    public static boolean COMPARE_THROWS = true;
 
-    public static void addPath(String prop, String path) {
-        List<String> lst;
-        if (paths.containsKey(prop)) {
-            lst = paths.get(prop);
-        } else {
-            lst  = new ArrayList<String>();
-        }
-        lst.add(path);
-        paths.put(prop, lst);
-    }
+//    public static void addPath(String prop, String path) {
+//        List<String> lst;
+//        if (paths.containsKey(prop)) {
+//            lst = paths.get(prop);
+//        } else {
+//            lst  = new ArrayList<String>();
+//        }
+//        lst.add(path);
+//        paths.put(prop, lst);
+//    }
 
-    public static void logPaths() {
-        String s = "";
-        String nl = "";
-        for (Map.Entry<String, List<String>> entry : paths.entrySet()) {
-            s = entry.getKey() + "#";
-            for (String path : entry.getValue()) {
-                s += nl + path;
-                nl = "%";
-            }
-            dumpPath(s);
-        }
-        paths = new HashMap<String,List<String>>();
-    }
+//    public static void logPaths() {
+//        String s = "";
+//        String nl = "";
+//        for (Map.Entry<String, List<String>> entry : paths.entrySet()) {
+//            s = entry.getKey() + "#";
+//            for (String path : entry.getValue()) {
+//                s += nl + path;
+//                nl = "%";
+//            }
+//            dumpPath(s);
+//        }
+//        paths = new HashMap<String,List<String>>();
+//    }
 
     public static void logPropagateError(Symbol.MethodSymbol m, Symbol.MethodSymbol overrided, Type.ClassType ct) {
         Symbol.ClassSymbol mcs = (Symbol.ClassSymbol) m.owner;
@@ -120,6 +121,7 @@ public class ScriptPropagate {
 
     public static void throwing(Env<AttrContext> e, ThrowCounter tcounter) {
         //counts throws in "throws" clean java sigs
+        if (!SHOULD_COUNT_THROWS && !COMPARE_THROWS) return;
         tcounter.count(e);
     }
 
@@ -128,36 +130,20 @@ public class ScriptPropagate {
 
         String s = method + "#" + type;
 
-        if (!SHOULD_COUNT_THROWS) return;
-
-        try {
-            String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-throw", s};
-            //String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-throw-count", s};
-
-            Runtime runtime = Runtime.getRuntime();
-            Process process = runtime.exec(cmd);
-            InputStream is = process.getInputStream();
-            InputStreamReader isr = new InputStreamReader(is);
-            BufferedReader br = new BufferedReader(isr);
-            String line;
-            while ((line = br.readLine()) != null) {
-                System.out.println(line);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }        
-    }
-    static private void dumpPath(String s) {
-        //this really doesn't matter now...
-        //the above .throwing() is better
+        if (!SHOULD_COUNT_THROWS && !COMPARE_THROWS) return;
         
-        //System.out.println(s);
-        s = REGISTER_PATHS ? "register**" + s : "compare**"+s;
         try {
-            String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-path", s};
-
             Runtime runtime = Runtime.getRuntime();
-            Process process = runtime.exec(cmd);
+            Process process;
+            if (SHOULD_COUNT_THROWS) {
+                 //System.err.println("Counting throws..." + s);
+                 String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-throw", s};
+                 process = runtime.exec(cmd);
+            } else {
+                 //System.err.println("Comparing..." + s);
+                 String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-path", s};
+                 process = runtime.exec(cmd);
+            }
             InputStream is = process.getInputStream();
             InputStreamReader isr = new InputStreamReader(is);
             BufferedReader br = new BufferedReader(isr);
@@ -169,6 +155,28 @@ public class ScriptPropagate {
             e.printStackTrace();
         }
     }
+//    static private void dumpPath(String s) {
+//        this really doesn't matter now...
+//        the above .throwing() is better
+//
+//        System.out.println(s);
+//        s = REGISTER_PATHS ? "register**" + s : "compare**"+s;
+//        try {
+//            String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-path", s};
+//
+//            Runtime runtime = Runtime.getRuntime();
+//            Process process = runtime.exec(cmd);
+//            InputStream is = process.getInputStream();
+//            InputStreamReader isr = new InputStreamReader(is);
+//            BufferedReader br = new BufferedReader(isr);
+//            String line;
+//            while ((line = br.readLine()) != null) {
+//                System.out.println(line);
+//            }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//    }
 
     static private void execute(String s) {
         for (String old : lst) {

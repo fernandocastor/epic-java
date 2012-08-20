@@ -888,6 +888,7 @@ public class JavaCompiler implements ClassReader.SourceCompleter {
                 if (errorCount() == 0) {
                     pflow.analysePropagate(envs);
                 }
+                System.err.println("Starting counting and gen stage");
                 for (Env<AttrContext> e : envs) {
                     ScriptPropagate.throwing(e, tcounter);
                     if(e.tree.getTag() != JCTree.PROPAGATE) {
