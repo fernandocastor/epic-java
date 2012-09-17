@@ -231,19 +231,21 @@ public class PropagateFlow extends TreeScanner {
     public int hierarchyDistance(JCTree.JCMethodDecl sub, JCTree.JCMethodDecl base)
             throws UnrelatedClassException{
         int i = 0;
-        Type subtype = ((Type.ClassType)sub.sym.owner.type).supertype_field;
+        Type supertype = ((Type.ClassType)sub.sym.owner.type).supertype_field;
+        Type.ClassType currentType = (Type.ClassType)sub.sym.owner.type;
         while (true) {
-            if (subtype == Type.noType) throw new UnrelatedClassException(sub.sym.owner, base.sym.owner);
+            if (supertype == Type.noType) throw new UnrelatedClassException(sub.sym.owner, base.sym.owner);
 
-            if (((Type.ClassType)sub.sym.owner.type).interfaces_field.contains(base.sym.owner.type)) {
+            if (currentType.interfaces_field.contains(base.sym.owner.type)) {
                 return i;
             }
 
-            if (subtype.tsym == base.sym.owner) {
+            if (supertype.tsym == base.sym.owner) {
                 return i;
             }
             i++;
-            subtype = ((Type.ClassType)subtype).supertype_field;
+            currentType = (Type.ClassType)supertype;
+            supertype = ((Type.ClassType)supertype).supertype_field;
         }
     }
 
