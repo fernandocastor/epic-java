@@ -13,6 +13,7 @@ import com.sun.tools.javac.tree.JCTree.JCFieldAccess;
 import com.sun.tools.javac.tree.JCTree.JCIdent;
 import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
 import com.sun.tools.javac.tree.JCTree.JCMethodInvocation;
+import com.sun.tools.javac.tree.TreeInfo;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -99,16 +100,16 @@ public class ScriptPropagate {
         //+ " because of " + f.selected.type.toString() + "::"+f.name + "["+f.type+"]");
         //+ " because of " + f.selected.type.toString() + "::" +f.sym;
         if (exit.tree.getTag() == JCTree.APPLY) {
-            JCMethodInvocation method = (JCMethodInvocation)exit.tree;
-            switch(method.meth.getTag()) {
+            JCTree meth = ((JCMethodInvocation)exit.tree).meth;
+            switch(meth.getTag()) {
                 case JCTree.SELECT:
-                    JCFieldAccess f = (JCFieldAccess) method.meth;
+                    JCFieldAccess f = (JCFieldAccess) meth;
                     Type.ClassType ct = (Type.ClassType)f.selected.type;
                     Symbol.ClassSymbol cs = (Symbol.ClassSymbol)ct.tsym;
                     s += cs.fullname + "::" + f.sym.toString();
                     break;
                 case JCTree.IDENT:
-                    JCIdent i = (JCIdent) method.meth;
+                    JCIdent i = (JCIdent) meth;
                     Symbol.ClassSymbol css = (Symbol.ClassSymbol) i.sym.owner;
                     s += css.fullname + "::" + i.sym;
                     break;
@@ -116,7 +117,12 @@ public class ScriptPropagate {
                     throw new RuntimeException("++BUG!! ScriptPropagate::logPropagateError");
             }
             s += "*]";
+        } else if (exit.tree.getTag() == JCTree.NEWCLASS) {
+            JCTree.JCNewClass nclazz = (JCTree.JCNewClass)exit.tree;
+            s += TreeInfo.symbol(nclazz.clazz) + "::" + nclazz.constructor + "*]";
         } else {
+            //System.out.println("----- Tree type? " + (exit.tree.getTag()));
+            //System.out.println("-----exit.tree: " + exit.tree);
             s += "ORIGIN*]";
         }
         execute(s);
