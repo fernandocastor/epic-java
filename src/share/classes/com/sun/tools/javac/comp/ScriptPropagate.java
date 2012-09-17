@@ -67,8 +67,12 @@ public class ScriptPropagate {
         Symbol.ClassSymbol cs = (Symbol.ClassSymbol) overrided.owner;
 
         
-        if (((Type.ClassType)mcs.type).supertype_field.tsym != cs.type.tsym) {
-            //dont send this to script
+        //ignore if cs is not direct superclass of mcs.
+        //or if cs is not direct interface of mcs.
+        Type.ClassType baseClassType = (Type.ClassType) mcs.type;
+        Type.ClassType superClassType = (Type.ClassType) cs.type;
+        if ((baseClassType.supertype_field.tsym != superClassType.tsym) &&
+            (!baseClassType.interfaces_field.contains(superClassType))) {
             return;
         }
 

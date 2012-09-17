@@ -234,6 +234,11 @@ public class PropagateFlow extends TreeScanner {
         Type subtype = ((Type.ClassType)sub.sym.owner.type).supertype_field;
         while (true) {
             if (subtype == Type.noType) throw new UnrelatedClassException(sub.sym.owner, base.sym.owner);
+
+            if (((Type.ClassType)sub.sym.owner.type).interfaces_field.contains(base.sym.owner.type)) {
+                return i;
+            }
+
             if (subtype.tsym == base.sym.owner) {
                 return i;
             }
@@ -908,20 +913,38 @@ public class PropagateFlow extends TreeScanner {
     public Symbol getOverridenMethod(JCTree.JCClassDecl clazz,
                                      Symbol ms, Name mname) {
 
-        if (clazz.extending == null) return null;
+        Symbol ret = null;
+        if (clazz.extending != null) {
+            JCTree.JCClassDecl superclazz = getClassForType(clazz.extending.type);
 
-        JCTree.JCClassDecl superclazz = getClassForType(clazz.extending.type);
-
-        if (superclazz == null) return null;
-        Scope.Entry e = superclazz.sym.members().lookup(mname);
-
-        while (e.scope != null) {
-            if (ms.overrides(e.sym,clazz.sym.type.tsym, types, false)) {
-                return e.sym;
+            if (superclazz != null) {
+                Scope.Entry e = superclazz.sym.members().lookup(mname);
+                while (e.scope != null) {
+                    if (ms.overrides(e.sym,clazz.sym.type.tsym, types, false)) {
+                        return e.sym;
+                    }
+                    e = e.next();
+                }
+                ret = getOverridenMethod(superclazz, ms, mname);
             }
-            e = e.next();
         }
-        return getOverridenMethod(superclazz, ms, mname);
+        if (ret == null) {
+            for(JCTree t : clazz.implementing) {
+                JCTree.JCClassDecl superclazz = getClassForType(t.type);
+
+                if (superclazz == null) continue;
+                Scope.Entry e = superclazz.sym.members().lookup(mname);
+
+                while (e.scope != null) {
+                    if (ms.overrides(e.sym,clazz.sym.type.tsym, types, false)) {
+                        return e.sym;
+                    }
+                    e = e.next();
+                }
+                ret = getOverridenMethod(superclazz, ms, mname);
+            }
+        }
+        return ret;
     }
 
     public boolean canOverrideMethodThrow(JCTree.JCClassDecl clazz,
