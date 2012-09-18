@@ -1459,7 +1459,7 @@ public class Check {
         if (unhandledErased.nonEmpty()) {
 
             for (Type tt: unhandledUnerased) {
-                ScriptPropagate.logPropagateError(m, other, (Type.ClassType)tt);
+                ScriptPropagate.logPropagateError(types, m, other, (Type.ClassType)tt);
             }
             log.error(TreeInfo.diagnosticPositionFor(m, tree),
                       "override.meth.doesnt.throw",

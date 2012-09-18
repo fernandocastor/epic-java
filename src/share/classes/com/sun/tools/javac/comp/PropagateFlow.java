@@ -14,7 +14,6 @@ import com.sun.tools.javac.util.ListBuffer;
 import com.sun.tools.javac.util.Log;
 
 import com.sun.tools.javac.util.Name;
-import com.sun.tools.javac.util.Pair;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedMap;
@@ -197,8 +196,8 @@ public class PropagateFlow extends TreeScanner {
         //otherwise, we check for overriden in this.self superclasses
         for (OverridingTriple triple : overridingCheckList) {
             if (!canOverrideMethodThrow(triple.clazz, triple.method, triple.thrown)) {
-                Symbol overriden = getOverridenMethod(triple.clazz, triple.method.sym, triple.method.name);
-                ScriptPropagate.logPropagateError(triple.method.sym,(Symbol.MethodSymbol)overriden, (Type.ClassType)triple.thrown.type);
+                Symbol overriden = getOverridenMethod(triple.clazz.type, triple.method.sym, triple.method.name);
+                ScriptPropagate.logPropagateError(types, triple.method.sym,(Symbol.MethodSymbol)overriden, (Type.ClassType)triple.thrown.type);
                 log.error(triple.pos,
                 "propagate.incompatible.throws",
                 triple.clazz.sym, triple.method.sym, triple.thrown.type);
@@ -228,25 +227,35 @@ public class PropagateFlow extends TreeScanner {
         return null;
     }
 
+    public int doHierarchyDistance(Type sub, Type sup, int level) {
+        if (sub == sup) {
+            return level;
+        }
+        if (sub == Type.noType) {
+            return -1;
+        }
+        Type.ClassType classType = (Type.ClassType)sub;
+        ArrayList<Type> lst = new ArrayList<Type>();
+        lst.add(classType.supertype_field);
+        lst.addAll(classType.interfaces_field);
+        int  ret = -1;
+        for (Type t : lst) {
+            ret = doHierarchyDistance(t, sup, level+1);
+            if (ret >= 0) break;
+        }
+        return ret;
+    }
+
     public int hierarchyDistance(JCTree.JCMethodDecl sub, JCTree.JCMethodDecl base)
             throws UnrelatedClassException{
         int i = 0;
         Type supertype = ((Type.ClassType)sub.sym.owner.type).supertype_field;
         Type.ClassType currentType = (Type.ClassType)sub.sym.owner.type;
-        while (true) {
-            if (supertype == Type.noType) throw new UnrelatedClassException(sub.sym.owner, base.sym.owner);
 
-            if (currentType.interfaces_field.contains(base.sym.owner.type)) {
-                return i;
-            }
-
-            if (supertype.tsym == base.sym.owner) {
-                return i;
-            }
-            i++;
-            currentType = (Type.ClassType)supertype;
-            supertype = ((Type.ClassType)supertype).supertype_field;
-        }
+        int level = doHierarchyDistance(sub.sym.owner.type, base.sym.owner.type, 0);
+        if (level == -1)
+            throw new UnrelatedClassException(sub.sym.owner, base.sym.owner);
+        return level;
     }
 
     public List<JCTree.JCMethodDecl> sortHierarchy(List<JCTree.JCMethodDecl> lst)
@@ -883,9 +892,9 @@ public class PropagateFlow extends TreeScanner {
                     Name name = this.self.name;
                     Symbol current = this.self.sym;
                     while (current != this.base.sym) {
-                        current = getOverridenMethod(
-                                        getClassForType(current.owner.type),
+                        current = getOverridenMethod(current.owner.type,
                                            current, name);
+
                         if (current != null) {
                             //add exception type to thrown list
                             //ScriptPropagate.throwing(current.owner + "::"+current, t.type.toString());
@@ -912,39 +921,42 @@ public class PropagateFlow extends TreeScanner {
         }
     }
 
-    public Symbol getOverridenMethod(JCTree.JCClassDecl clazz,
+    public Symbol getOverridenMethod(Type _classType,
                                      Symbol ms, Name mname) {
 
-        Symbol ret = null;
-        if (clazz.extending != null) {
-            JCTree.JCClassDecl superclazz = getClassForType(clazz.extending.type);
+        if (_classType == Type.noType) {
+                return null;
+        }
+        Type.ClassType classType = (Type.ClassType)_classType;
 
-            if (superclazz != null) {
-                Scope.Entry e = superclazz.sym.members().lookup(mname);
-                while (e.scope != null) {
-                    if (ms.overrides(e.sym,clazz.sym.type.tsym, types, false)) {
-                        return e.sym;
-                    }
-                    e = e.next();
+        Type _superclassType = classType.supertype_field;
+        if (_superclassType != Type.noType) {
+            Type.ClassType superclassType = (Type.ClassType)_superclassType;
+            Scope.Entry e = superclassType.tsym.members().lookup(mname);
+            while (e.scope != null) {
+                if (ms.overrides(e.sym,superclassType.tsym, types, false)) {
+                    return e.sym;
                 }
-                ret = getOverridenMethod(superclazz, ms, mname);
+                e = e.next();
             }
         }
-        if (ret == null) {
-            for(JCTree t : clazz.implementing) {
-                JCTree.JCClassDecl superclazz = getClassForType(t.type);
+        for(Type t : classType.interfaces_field) {
+            Scope.Entry e = t.tsym.members().lookup(mname);
 
-                if (superclazz == null) continue;
-                Scope.Entry e = superclazz.sym.members().lookup(mname);
-
-                while (e.scope != null) {
-                    if (ms.overrides(e.sym,clazz.sym.type.tsym, types, false)) {
-                        return e.sym;
-                    }
-                    e = e.next();
+            while (e.scope != null) {
+                if (ms.overrides(e.sym,t.tsym, types, false)) {
+                    return e.sym;
                 }
-                ret = getOverridenMethod(superclazz, ms, mname);
+                e = e.next();
             }
+        }
+        ArrayList<Type> lst = new ArrayList<Type>();
+        lst.add(_superclassType);
+        lst.addAll(classType.interfaces_field);
+        Symbol ret = null;
+        for (Type t : lst) {
+            ret = getOverridenMethod(t, ms, mname);
+            if (ret != null) break;
         }
         return ret;
     }
@@ -954,7 +966,7 @@ public class PropagateFlow extends TreeScanner {
                                           JCTree.JCExpression t) {
         //check for parent overrided methods. If they can throw
         //E, we can.
-        Symbol overriden = getOverridenMethod(clazz, m.sym, m.name);
+        Symbol overriden = getOverridenMethod(clazz.type, m.sym, m.name);
         if (overriden == null) {
             return true;
         } else {

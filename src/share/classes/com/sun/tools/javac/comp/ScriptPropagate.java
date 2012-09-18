@@ -5,8 +5,10 @@
 package com.sun.tools.javac.comp;
 
 
+import com.sun.tools.javac.code.Scope;
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.code.Symbol;
+import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.comp.Flow.PendingExit;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCFieldAccess;
@@ -14,13 +16,14 @@ import com.sun.tools.javac.tree.JCTree.JCIdent;
 import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
 import com.sun.tools.javac.tree.JCTree.JCMethodInvocation;
 import com.sun.tools.javac.tree.TreeInfo;
+import com.sun.tools.javac.util.Name;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+
 
 /**
  *
@@ -63,19 +66,68 @@ public class ScriptPropagate {
 //        paths = new HashMap<String,List<String>>();
 //    }
 
-    public static void logPropagateError(Symbol.MethodSymbol m, Symbol.MethodSymbol overrided, Type.ClassType ct) {
-        Symbol.ClassSymbol mcs = (Symbol.ClassSymbol) m.owner;
-        Symbol.ClassSymbol cs = (Symbol.ClassSymbol) overrided.owner;
-
+    public static Symbol getDirectOverridenMethod(Types types, Type _classType,
+                                                  Symbol ms, Name mname) {
+        if (_classType == Type.noType) {
+                return null; 
+        }
+        Type.ClassType classType = (Type.ClassType)_classType;
         
-        //ignore if cs is not direct superclass of mcs.
-        //or if cs is not direct interface of mcs.
-        Type.ClassType baseClassType = (Type.ClassType) mcs.type;
-        Type.ClassType superClassType = (Type.ClassType) cs.type;
-        if ((baseClassType.supertype_field.tsym != superClassType.tsym) &&
-            (!baseClassType.interfaces_field.contains(superClassType))) {
+        Type _superclassType = classType.supertype_field;        
+        if (_superclassType != Type.noType) {
+            Type.ClassType superclassType = (Type.ClassType)_superclassType;
+            Scope.Entry e = superclassType.tsym.members().lookup(mname);
+            while (e.scope != null) {
+                if (ms.overrides(e.sym,superclassType.tsym, types, false)) {
+                    return e.sym;
+                }
+                e = e.next();
+            }
+        }
+        for(Type t : classType.interfaces_field) {
+            Scope.Entry e = t.tsym.members().lookup(mname);
+
+            while (e.scope != null) {
+                if (ms.overrides(e.sym,t.tsym, types, false)) {
+                    return e.sym;
+                }
+                e = e.next();
+            }
+        }
+        ArrayList<Type> lst = new ArrayList<Type>();
+        lst.add(_superclassType);
+        lst.addAll(classType.interfaces_field);        
+        Symbol ret = null;
+        for (Type t : lst) {
+            ret = getDirectOverridenMethod(types, t, ms, mname);
+            if (ret != null) break;
+        }
+        return ret;
+    }
+    //copied from PropagateFlow
+    public static boolean exitsInDirectParentOrInterface(Types types, Symbol.MethodSymbol method, Symbol.MethodSymbol overrided) {
+        Symbol res = getDirectOverridenMethod(types, method.owner.type, method, method.name);
+        return res == overrided;
+//        Symbol.ClassSymbol mcs = (Symbol.ClassSymbol) m.owner;
+//        Symbol.ClassSymbol cs = (Symbol.ClassSymbol) overrided.owner;
+//
+//        Type.ClassType baseClassType = (Type.ClassType) mcs.type;
+//        Type.ClassType superClassType = (Type.ClassType) cs.type;
+//
+//        if ((baseClassType.supertype_field.tsym != superClassType.tsym) &&
+//            (!baseClassType.interfaces_field.contains(superClassType))) {
+//        }
+//        return true;
+    }
+
+    public static void logPropagateError(Types types, Symbol.MethodSymbol m, Symbol.MethodSymbol overrided, Type.ClassType ct) {
+        //ignore if overrided is far above in the hierarchy
+        //and there are intermediary overridens
+        if (!exitsInDirectParentOrInterface(types, m,overrided)) {
             return;
         }
+        Symbol.ClassSymbol mcs = (Symbol.ClassSymbol) m.owner;
+        Symbol.ClassSymbol cs = (Symbol.ClassSymbol) overrided.owner;
 
         String first = "{*" + mcs.fullname + "::" + m + "*}";
         String second = "{*"+ cs.fullname + "::" + overrided + "*}";
