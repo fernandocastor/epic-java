@@ -698,8 +698,8 @@ public class PropagateFlow extends TreeScanner {
             //System.err.println("Already did: " + found.sym);
             return;
         }
-        System.out.println(this.nextTargets.methodNode.method.sym + " =?= " +
-                found.sym.owner + "::"+  found.sym);
+        //System.out.println(this.nextTargets.methodNode.method.sym + " =?= " +
+        //        found.sym.owner + "::"+  found.sym);
         this.nextTargets.scannedMethods.add(found);
         //System.err.println("Size: " + this.currentTree.node.scannedMethods.size());
 
