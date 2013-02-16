@@ -8,6 +8,8 @@ package com.sun.tools.javac.comp;
 import com.sun.tools.javac.code.Scope;
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.code.Symbol;
+import com.sun.tools.javac.code.Symbol.VarSymbol;
+import com.sun.tools.javac.code.TypeTags;
 import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.comp.Flow.PendingExit;
 import com.sun.tools.javac.main.OptionName;
@@ -170,8 +172,25 @@ public class ScriptPropagate {
         execute(script, s);
     }
 
+    private String methodToStringErasure(Symbol.MethodSymbol sym) {
+        //given a method f(T,V), where T and V are type parameters
+        String ret = sym.name + "(";
+
+        String c = "";
+        for(VarSymbol v : sym.params) {
+            if (v.type.tag == TypeTags.TYPEVAR) {
+                ret += c + v.type.getUpperBound();
+            } else {
+                ret += c + v.type.toString();
+            }
+            c = ",";
+        }
+
+        return ret + ")";
+    }
     public void logPropagateError(PendingExit exit, JCMethodDecl tree) {
-        String s = "[*"+tree.sym.owner.toString()+"::" + tree.sym.toString()
+        String s = "[*"+tree.sym.owner.toString()+"::"
+                + methodToStringErasure(tree.sym)
                 + "*] should throw [*" + exit.thrown.toString()
                 + "*] because it calls [*";
         //+ " because of " + f.selected.type.toString() + "::"+f.name + "["+f.type+"]");
