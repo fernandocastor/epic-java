@@ -35,6 +35,8 @@ package com.sun.tools.javac.main;
  * or deletion without notice.</b></p>
  */
 public enum OptionName {
+    EPIC_ERR("-epic:err"),
+    EPIC_INFO("-epic:info"),
     G("-g"),
     G_NONE("-g:none"),
     G_CUSTOM("-g:"),

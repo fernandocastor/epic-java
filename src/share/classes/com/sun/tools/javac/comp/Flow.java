@@ -195,6 +195,8 @@ public class Flow extends TreeScanner {
     private final boolean allowImprovedRethrowAnalysis;
     private final boolean allowImprovedCatchAnalysis;
 
+    private ScriptPropagate scriptPropagate;
+
     public static Flow instance(Context context) {
         Flow instance = context.get(flowKey);
         if (instance == null)
@@ -214,6 +216,8 @@ public class Flow extends TreeScanner {
         Source source = Source.instance(context);
         allowImprovedRethrowAnalysis = source.allowImprovedRethrowAnalysis();
         allowImprovedCatchAnalysis = source.allowImprovedCatchAnalysis();
+
+        scriptPropagate = ScriptPropagate.instance(context);
     }
 
     /** A flag that indicates whether the last statement could
@@ -771,7 +775,7 @@ public class Flow extends TreeScanner {
                 } else {
                     // uncaught throws will be reported later
 
-                    ScriptPropagate.logPropagateError(exit, tree);
+                    scriptPropagate.logPropagateError(exit, tree);
                     pendingExits.append(exit);
                 }
             }

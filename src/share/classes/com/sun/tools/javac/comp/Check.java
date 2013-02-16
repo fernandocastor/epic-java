@@ -70,7 +70,7 @@ public class Check {
     private boolean suppressAbortOnBadClassFile;
     private boolean enableSunApiLintControl;
     private final TreeInfo treeinfo;
-
+    private ScriptPropagate scriptPropagate;
     // The set of lint options currently in effect. It is initialized
     // from the context, and then is set/reset as needed by Attr as it
     // visits all the various parts of the trees during attribution.
@@ -128,6 +128,8 @@ public class Check {
                 enforceMandatoryWarnings, "sunapi", null);
 
         deferredLintHandler = DeferredLintHandler.immediateHandler;
+
+        scriptPropagate = ScriptPropagate.instance(context);
     }
 
     /** Switch: generics enabled?
@@ -1459,7 +1461,7 @@ public class Check {
         if (unhandledErased.nonEmpty()) {
 
             for (Type tt: unhandledUnerased) {
-                ScriptPropagate.logPropagateError(types, m, other, (Type.ClassType)tt);
+                scriptPropagate.logPropagateError(types, m, other, (Type.ClassType)tt);
             }
             log.error(TreeInfo.diagnosticPositionFor(m, tree),
                       "override.meth.doesnt.throw",

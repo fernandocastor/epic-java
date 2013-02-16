@@ -254,6 +254,7 @@ public class JavaCompiler implements ClassReader.SourceCompleter {
     protected Attr attr;
 
     protected PropagateFlow pflow;
+    protected ScriptPropagate scriptPropagate;
     protected ThrowCounter tcounter;
 
 
@@ -354,6 +355,7 @@ public class JavaCompiler implements ClassReader.SourceCompleter {
         source = Source.instance(context);
         attr = Attr.instance(context);
         pflow = PropagateFlow.instance(context);
+        scriptPropagate = ScriptPropagate.instance(context);
         tcounter = ThrowCounter.instance(context);
         chk = Check.instance(context);
         gen = Gen.instance(context);
@@ -888,9 +890,8 @@ public class JavaCompiler implements ClassReader.SourceCompleter {
                 if (errorCount() == 0) {
                     pflow.analysePropagate(envs);
                 }
-                System.err.println("Starting counting and gen stage");
                 for (Env<AttrContext> e : envs) {
-                    ScriptPropagate.throwing(e, tcounter);
+                    scriptPropagate.throwing(e, tcounter);
                     if(e.tree.getTag() != JCTree.PROPAGATE) {
                         generate(desugar(flow(e)));
                     }

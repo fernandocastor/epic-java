@@ -10,13 +10,16 @@ import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Types;
 import com.sun.tools.javac.comp.Flow.PendingExit;
+import com.sun.tools.javac.main.OptionName;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCFieldAccess;
 import com.sun.tools.javac.tree.JCTree.JCIdent;
 import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
 import com.sun.tools.javac.tree.JCTree.JCMethodInvocation;
 import com.sun.tools.javac.tree.TreeInfo;
+import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Name;
+import com.sun.tools.javac.util.Options;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -30,16 +33,29 @@ import java.util.List;
  * @author thiago
  */
 public class ScriptPropagate {
-    public static List<String> lst = new ArrayList<String>();
-    public static List<String> hierarchy_first = new ArrayList<String>();
-    public static List<String> hierarchy_second = new ArrayList<String>();
-
-    public static HashMap<String, List<String>> paths = new HashMap<String,List<String>>();
+    private Options options;
     
-    public static boolean BUILDING_STAGE = false;
+    private List<String> lst = new ArrayList<String>();
+    private List<String> hierarchy_first = new ArrayList<String>();
+    private List<String> hierarchy_second = new ArrayList<String>();
 
-    public static boolean SHOULD_COUNT_THROWS = false;
-    public static boolean COMPARE_THROWS = true;
+    private HashMap<String, List<String>> paths = new HashMap<String,List<String>>();
+
+    protected static final Context.Key<ScriptPropagate> sKey =
+        new Context.Key<ScriptPropagate>();
+
+    public static ScriptPropagate instance(Context context) {
+        ScriptPropagate instance = context.get(sKey);
+        if (instance == null)
+            instance = new ScriptPropagate(context);
+        return instance;
+    }
+
+
+    private ScriptPropagate(Context context)  {
+        options = Options.instance(context);
+    }
+
 
 //    public static void addPath(String prop, String path) {
 //        List<String> lst;
@@ -66,7 +82,7 @@ public class ScriptPropagate {
 //        paths = new HashMap<String,List<String>>();
 //    }
 
-    public static Symbol getDirectOverridenMethod(Types types, Type _classType,
+    public Symbol getDirectOverridenMethod(Types types, Type _classType,
                                                   Symbol ms, Name mname) {
         if (_classType == Type.noType) {
                 return null; 
@@ -105,7 +121,7 @@ public class ScriptPropagate {
         return ret;
     }
     //copied from PropagateFlow
-    public static boolean exitsInDirectParentOrInterface(Types types, Symbol.MethodSymbol method, Symbol.MethodSymbol overrided) {
+    public boolean exitsInDirectParentOrInterface(Types types, Symbol.MethodSymbol method, Symbol.MethodSymbol overrided) {
         Symbol res = getDirectOverridenMethod(types, method.owner.type, method, method.name);
         return res == overrided;
 //        Symbol.ClassSymbol mcs = (Symbol.ClassSymbol) m.owner;
@@ -120,7 +136,7 @@ public class ScriptPropagate {
 //        return true;
     }
 
-    public static void logPropagateError(Types types, Symbol.MethodSymbol m, Symbol.MethodSymbol overrided, Type.ClassType ct) {
+    public void logPropagateError(Types types, Symbol.MethodSymbol m, Symbol.MethodSymbol overrided, Type.ClassType ct) {
         //ignore if overrided is far above in the hierarchy
         //and there are intermediary overridens
         if (!exitsInDirectParentOrInterface(types, m,overrided)) {
@@ -142,10 +158,19 @@ public class ScriptPropagate {
 
         hierarchy_first.add(first);
         hierarchy_second.add(second);
-        execute(s);
+        String script = System.getenv().get("EPIC_ERR");
+        for (String old : lst) {
+            if(old.equals(s)) return;
+        }
+        lst.add(s);
+
+        if (!options.isSet(OptionName.EPIC_ERR)) {
+            return;
+        }
+        execute(script, s);
     }
 
-    public static void logPropagateError(PendingExit exit, JCMethodDecl tree) {
+    public void logPropagateError(PendingExit exit, JCMethodDecl tree) {
         String s = "[*"+tree.sym.owner.toString()+"::" + tree.sym.toString()
                 + "*] should throw [*" + exit.thrown.toString()
                 + "*] because it calls [*";
@@ -177,45 +202,36 @@ public class ScriptPropagate {
             //System.out.println("-----exit.tree: " + exit.tree);
             s += "ORIGIN*]";
         }
-        execute(s);
+        for (String old : lst) {
+            if(old.equals(s)) return;
+        }
+        lst.add(s);
+
+        if (!options.isSet(OptionName.EPIC_ERR)) {
+            return;
+        }
+        String script = System.getenv().get("EPIC_ERR");
+        execute(script, s);
     }
 
 
-    public static void throwing(Env<AttrContext> e, ThrowCounter tcounter) {
-        //counts throws in "throws" clean java sigs
-        if (!SHOULD_COUNT_THROWS && !COMPARE_THROWS) return;
-        tcounter.count(e);
+    public void throwing(Env<AttrContext> e, ThrowCounter tcounter) {
+        //counts throws in "throws" (usually to count throws in clean java sigs)
+        if (options.isSet(OptionName.EPIC_INFO)) {
+            tcounter.count(e);
+        }
     }
 
-    public static void throwing(String method, String type) {
+    public void throwing(String method, String type) {
         //counts throws from propagates
 
         String s = method + "#" + type;
 
-        if (!SHOULD_COUNT_THROWS && !COMPARE_THROWS) return;
+        if (!options.isSet(OptionName.EPIC_INFO)) return;
         
-        try {
-            Runtime runtime = Runtime.getRuntime();
-            Process process;
-            if (SHOULD_COUNT_THROWS) {
-                 //System.err.println("Counting throws..." + s);
-                 String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-throw", s};
-                 process = runtime.exec(cmd);
-            } else {
-                 //System.err.println("Comparing..." + s);
-                 String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-path", s};
-                 process = runtime.exec(cmd);
-            }
-            InputStream is = process.getInputStream();
-            InputStreamReader isr = new InputStreamReader(is);
-            BufferedReader br = new BufferedReader(isr);
-            String line;
-            while ((line = br.readLine()) != null) {
-                System.out.println(line);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        String script = null;
+        script = System.getenv().get("EPIC_INFO");
+        execute(script, s);
     }
 //    static private void dumpPath(String s) {
 //        this really doesn't matter now...
@@ -240,18 +256,9 @@ public class ScriptPropagate {
 //        }
 //    }
 
-    static private void execute(String s) {
-        for (String old : lst) {
-            if(old.equals(s)) return;
-        }
-        lst.add(s);
-        
-        if (!BUILDING_STAGE) {
-            return;
-        }
-        //System.out.println(s);
+    private void execute(String script, String s) {
         try {
-            String[] cmd = {"/home/thiago/src/java_msc/testando/scripts/pjavac-script", s};
+            String[] cmd = {script, s};
 
             Runtime runtime = Runtime.getRuntime();
             Process process = runtime.exec(cmd);
@@ -263,7 +270,7 @@ public class ScriptPropagate {
                 System.out.println(line);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("EPIC: could not pipe data to command");
         }
     }
 }

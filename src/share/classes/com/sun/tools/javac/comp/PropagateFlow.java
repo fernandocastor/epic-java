@@ -132,6 +132,7 @@ public class PropagateFlow extends TreeScanner {
     //private final Names names;
     private final Log log;
     private Types types;
+    private ScriptPropagate scriptPropagate;
     //private final Symtab syms;
     //private final Types types;
     private final Check chk;
@@ -147,7 +148,7 @@ public class PropagateFlow extends TreeScanner {
         this.types = Types.instance(context);
         log = Log.instance(context);
         chk = Check.instance(context);
-
+        scriptPropagate = ScriptPropagate.instance(context);
         overridingCheckList = new ArrayList<OverridingTriple>();
     }
 
@@ -197,7 +198,7 @@ public class PropagateFlow extends TreeScanner {
         for (OverridingTriple triple : overridingCheckList) {
             if (!canOverrideMethodThrow(triple.clazz, triple.method, triple.thrown)) {
                 Symbol overriden = getOverridenMethod(triple.clazz.type, triple.method.sym, triple.method.name);
-                ScriptPropagate.logPropagateError(types, triple.method.sym,(Symbol.MethodSymbol)overriden, (Type.ClassType)triple.thrown.type);
+                scriptPropagate.logPropagateError(types, triple.method.sym,(Symbol.MethodSymbol)overriden, (Type.ClassType)triple.thrown.type);
                 log.error(triple.pos,
                 "propagate.incompatible.throws",
                 triple.clazz.sym, triple.method.sym, triple.thrown.type);

@@ -18,6 +18,7 @@ public class ThrowCounter extends TreeScanner{
     protected static final Context.Key<ThrowCounter> tKey =
         new Context.Key<ThrowCounter>();
 
+    private ScriptPropagate scriptPropagate;
     public static ThrowCounter instance(Context context) {
         ThrowCounter instance = context.get(tKey);
         if (instance == null)
@@ -43,10 +44,11 @@ public class ThrowCounter extends TreeScanner{
         this.types = Types.instance(context);
         log = Log.instance(context);
         chk = Check.instance(context);
+        scriptPropagate = ScriptPropagate.instance(context);
     }
     
     public void count(Env<AttrContext> e) {
-        scan(e.toplevel);
+        scan(e.tree);
     }
     
     public void visitMethodDef(JCMethodDecl tree) {
@@ -56,7 +58,7 @@ public class ThrowCounter extends TreeScanner{
         //}
         //to setup methods vs. exceptions they throw
         for(JCExpression e: tree.thrown) {
-            ScriptPropagate.throwing(tree.sym.owner + "::"+tree.sym, e.type.toString());
+            scriptPropagate.throwing(tree.sym.owner + "::"+tree.sym, e.type.toString());
         }
     }    
 }

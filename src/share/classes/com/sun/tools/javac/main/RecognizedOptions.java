@@ -115,6 +115,8 @@ public class RecognizedOptions {
     }
 
     static Set<OptionName> javacOptions = EnumSet.of(
+        EPIC_ERR,
+        EPIC_INFO,
         G,
         G_NONE,
         G_CUSTOM,
@@ -362,6 +364,10 @@ public class RecognizedOptions {
                 return super.process(options, option, operand);
             }
         },
+
+        new Option(EPIC_ERR,"epic.err"),
+        new Option(EPIC_INFO,"epic.info"),
+
         new Option(VERSION,                                     "opt.version") {
             @Override
             public boolean process(Options options, String option) {
