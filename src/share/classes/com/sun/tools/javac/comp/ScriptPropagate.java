@@ -147,9 +147,9 @@ public class ScriptPropagate {
         Symbol.ClassSymbol mcs = (Symbol.ClassSymbol) m.owner;
         Symbol.ClassSymbol cs = (Symbol.ClassSymbol) overrided.owner;
 
-        String first = "{*" + mcs.fullname + "::" + m + "*}";
-        String second = "{*"+ cs.fullname + "::" + overrided + "*}";
-        String s = first + " " + second + " should throw {*"+ct.tsym+"*}";
+        String first = "{!" + mcs.fullname + "::" + methodToStringErasure(m) + "!}";
+        String second = "{!"+ cs.fullname + "::" + methodToStringErasure(overrided) + "!}";
+        String s = first + " " + second + " should throw {!"+ct.tsym+"!}";
 
         for (String f : hierarchy_first) {
             if (f.equals(first)) return;
@@ -191,8 +191,8 @@ public class ScriptPropagate {
     public void logPropagateError(PendingExit exit, JCMethodDecl tree) {
         String s = "[*"+tree.sym.owner.toString()+"::"
                 + methodToStringErasure(tree.sym)
-                + "*] should throw [*" + exit.thrown.toString()
-                + "*] because it calls [*";
+                + "!] should throw [!" + exit.thrown.toString()
+                + "!] because it calls [!";
         //+ " because of " + f.selected.type.toString() + "::"+f.name + "["+f.type+"]");
         //+ " because of " + f.selected.type.toString() + "::" +f.sym;
         if (exit.tree.getTag() == JCTree.APPLY) {
@@ -212,14 +212,14 @@ public class ScriptPropagate {
                 default:
                     throw new RuntimeException("++BUG!! ScriptPropagate::logPropagateError");
             }
-            s += "*]";
+            s += "!]";
         } else if (exit.tree.getTag() == JCTree.NEWCLASS) {
             JCTree.JCNewClass nclazz = (JCTree.JCNewClass)exit.tree;
-            s += TreeInfo.symbol(nclazz.clazz) + "::" + nclazz.constructor + "*]";
+            s += TreeInfo.symbol(nclazz.clazz) + "::" + methodToStringErasure((Symbol.MethodSymbol)nclazz.constructor) + "!]";
         } else {
             //System.out.println("----- Tree type? " + (exit.tree.getTag()));
             //System.out.println("-----exit.tree: " + exit.tree);
-            s += "ORIGIN*]";
+            s += "ORIGIN!]";
         }
         for (String old : lst) {
             if(old.equals(s)) return;
