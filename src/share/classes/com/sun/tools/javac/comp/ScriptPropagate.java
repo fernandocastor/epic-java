@@ -177,13 +177,15 @@ public class ScriptPropagate {
         String ret = sym.name + "(";
 
         String c = "";
-        for(VarSymbol v : sym.params) {
-            if (v.type.tag == TypeTags.TYPEVAR) {
-                ret += c + v.type.getUpperBound();
-            } else {
-                ret += c + v.type.toString();
+        if (sym.params != null) {
+            for(VarSymbol v : sym.params) {
+                if (v.type.tag == TypeTags.TYPEVAR) {
+                    ret += c + v.type.getUpperBound();
+                } else {
+                    ret += c + v.type.toString();
+                }
+                c = ",";
             }
-            c = ",";
         }
 
         return ret + ")";
