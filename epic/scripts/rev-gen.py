@@ -32,7 +32,8 @@ def to_sig(term):
 def print_path(path):
     terms = db.terms
     ts = [terms.find_one({"_id":tid}) for tid in path["terms"]]
-    append("propagating " + path["ex"] + ": " + ' => '.join([to_sig(t) for t in ts]) + ";")
+    if len(ts) > 1 or terms.find({"subs":ts[0]["_id"]}).count() == 0: #check if this is covered py a poly
+        append("propagating " + path["ex"] + ": " + ' => '.join([to_sig(t) for t in ts]) + ";")
 
 def print_poly(poly):
     prepend("propagating " + poly["ex"] + ": " + to_sig(poly) + ";")

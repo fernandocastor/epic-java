@@ -16,6 +16,13 @@
 # terms with subype info that are not part of a path should
 # have a propagate for them only.
 
+# notes:
+#  -propagates in the form {A,B.. <:C} won't happen. The script would have to
+#   add A,B... as subtypes of C, but given an exception E, the compiler will
+#   only raise error for,say, A required to throw E and, later, C. If B throws
+#   E, because it is covered by C, the compiler won't issue error and
+#   therefore we won't get that B overrides C.
+
 # examples of input:
 
 # [!A::f()!] should throw [!E!] because it calls [!ORIGIN!]
@@ -58,7 +65,7 @@ def add_call_chain():
     # don't add duplicate
     n = terms.find_one({"signature":sig,"ex":ex})
     if n != None:
-        raise Exception("there shouldn't be a term here")
+        sys.exit(0) #ignoring
 
     # get a term for the caller
     term = terms.find_one({"signature":sig, "ex":ex})
@@ -81,8 +88,11 @@ def add_call_chain():
         dd("its origin, creating a path...")
         paths.insert({"ex":ex,
                       "terms":[term_id]})
+    elif terms.find_one({"signature": origin_sig, "ex":ex}) == None:
+        dd("origin is not throw, but it's outside border. Creating path..")
+        paths.insert({"ex":ex,
+                      "terms":[term_id]})
     else:
-        dd("its not origin, finding paths...")
         org = terms.find_one({"signature": origin_sig, "ex":ex})
         if org == None:
             raise Exception("we *should* have an origin here")
@@ -134,9 +144,10 @@ def add_hierarchy():
 ####
 
 if input.startswith("[!"):
-    dd("adding call chain")
+    dd("adding call chain: " + input)
     add_call_chain()
 elif input.startswith("{!"):
+    dd("adding hierarchy info: " + input)
     add_hierarchy()
 else:
     raise Exception("Unknow input")
