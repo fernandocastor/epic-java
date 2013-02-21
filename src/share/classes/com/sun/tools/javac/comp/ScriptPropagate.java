@@ -23,7 +23,7 @@ import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Name;
 import com.sun.tools.javac.util.Options;
 import java.io.BufferedReader;
-import java.io.InputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -169,7 +169,7 @@ public class ScriptPropagate {
         if (!options.isSet(OptionName.EPIC_ERR)) {
             return;
         }
-        execute(script, s);
+        execute(script, s, false);
     }
 
     private String methodToStringErasure(Symbol.MethodSymbol sym) {
@@ -187,11 +187,10 @@ public class ScriptPropagate {
                 c = ",";
             }
         }
-
         return ret + ")";
     }
     public void logPropagateError(PendingExit exit, JCMethodDecl tree) {
-        String s = "[*"+tree.sym.owner.toString()+"::"
+        String s = "[!"+tree.sym.owner.toString()+"::"
                 + methodToStringErasure(tree.sym)
                 + "!] should throw [!" + exit.thrown.toString()
                 + "!] because it calls [!";
@@ -232,7 +231,7 @@ public class ScriptPropagate {
             return;
         }
         String script = System.getenv().get("EPIC_ERR");
-        execute(script, s);
+        execute(script, s, false);
     }
 
 
@@ -252,7 +251,7 @@ public class ScriptPropagate {
         
         String script = null;
         script = System.getenv().get("EPIC_INFO");
-        execute(script, s);
+        execute(script, s, true);
     }
 //    static private void dumpPath(String s) {
 //        this really doesn't matter now...
@@ -277,21 +276,36 @@ public class ScriptPropagate {
 //        }
 //    }
 
-    private void execute(String script, String s) {
+    private void execute(String script, String s, boolean displayOutput) {
         try {
             String[] cmd = {script, s};
 
             Runtime runtime = Runtime.getRuntime();
             Process process = runtime.exec(cmd);
-            InputStream is = process.getInputStream();
-            InputStreamReader isr = new InputStreamReader(is);
-            BufferedReader br = new BufferedReader(isr);
+            BufferedReader or = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            BufferedReader er = new BufferedReader(new InputStreamReader(process.getErrorStream()));
             String line;
-            while ((line = br.readLine()) != null) {
-                System.out.println(line);
+            String err = "";
+            String out = "";
+            while((line = or.readLine()) != null) {
+                out += line +"\n";
             }
-        } catch (Exception e) {
-            System.err.println("EPIC: could not pipe data to command");
+            err = out;
+            while((line = er.readLine()) != null) {
+                err += line +"\n";
+            }
+            process.waitFor();
+            if (displayOutput) {
+                System.out.println(out);
+            }
+            if (process.exitValue() != 0) {
+                System.err.println(err);
+                throw new RuntimeException("EPIC command exited with failure: " + script);
+            }
+        } catch(InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }
