@@ -229,7 +229,7 @@ public class PropagateFlow extends TreeScanner {
     }
 
     public int doHierarchyDistance(Type sub, Type sup, int level) {
-        if (sub == sup) {
+        if (sub.tsym == sup.tsym) {
             return level;
         }
         if (sub == Type.noType) {
