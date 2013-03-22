@@ -1,12 +1,10 @@
 #!/usr/bin/python
 
-# count-ex.py <method-name>##<exception-type>
+# count-ex.py <db-name> <method-pattern>
 
-# inserts in the app_exceptions collection of ENV["EPIC_DB"] the
-# information above in the following format:
-#
-# {"ex": <exception-type>, "methods": [m1, m2, ....mn]}
-
+# shows the number of methods throwing exceptions in db-name.
+# method-pattern defines the initial string to match against the
+# method's fully qualified name.
 
 import sys
 import os
@@ -16,18 +14,20 @@ import re
 def dd(x):
     print x
 
-input = sys.argv[1]
-dbname = os.environ["EPIC_DB"]
+dbname = sys.argv[1]
+pattern = sys.argv[2]
 
 con = pymongo.Connection("localhost")
 db = con[dbname]
 
 col = db.app_exceptions
 
-method, ex = input.split("#")
+i=0
+dup = []
+for node in  col.find():
+    for method in node["methods"]:
+        if method.startswith(pattern) and method not in dup:
+            i=i+1
+            dup.append(method)
 
-node = col.find_one({"ex":ex})
-if node == None:
-    col.insert({"methods":[method],"ex":ex})
-else:
-    col.update({"_id":node["_id"]},{"$set":{"methods":node["methods"]+[method]}})
+print i

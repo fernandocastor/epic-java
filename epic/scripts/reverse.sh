@@ -2,7 +2,7 @@
 
 #
 # usage:
-#.$ /reverse.sh -d "db-name" [-c] [-p ./] [-t task]
+#.$ /reverse.sh -d <db-name> [-c] [-p ./] [-t <task>]
 #
 # -d = db name
 # -p = Propagates.java path
