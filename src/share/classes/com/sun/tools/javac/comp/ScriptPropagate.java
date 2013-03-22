@@ -181,6 +181,8 @@ public class ScriptPropagate {
             for(VarSymbol v : sym.params) {
                 if (v.type.tag == TypeTags.TYPEVAR) {
                     ret += c + v.type.getUpperBound();
+                } else if (v.type.isParameterized()) {
+                    ret += c + v.type.tsym.toString();
                 } else {
                     ret += c + v.type.toString();
                 }
