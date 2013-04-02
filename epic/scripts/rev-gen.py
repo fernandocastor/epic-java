@@ -27,7 +27,7 @@ def to_sig(term):
     else:
         terms = db.terms
         sub_terms = [terms.find_one({"_id":sub_id}) for sub_id in term["subs"]]
-        return "{"+', '.join([t["type"] for t in sub_terms]) + " <: " + term["type"] + "}." + term["name"]
+        return "{"+', '.join([t["type"] for t in sub_terms]) + " <: " + term["type"] + "}." + sub_terms[0]["name"]
 
 def print_path(path):
     terms = db.terms
