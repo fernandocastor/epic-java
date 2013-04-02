@@ -8,6 +8,7 @@ package com.sun.tools.javac.comp;
 import com.sun.tools.javac.code.Scope;
 import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.code.Symbol;
+import com.sun.tools.javac.code.Symbol.MethodSymbol;
 import com.sun.tools.javac.code.Symbol.VarSymbol;
 import com.sun.tools.javac.code.TypeTags;
 import com.sun.tools.javac.code.Types;
@@ -174,7 +175,13 @@ public class ScriptPropagate {
 
     private String methodToStringErasure(Symbol.MethodSymbol sym) {
         //given a method f(T,V), where T and V are type parameters
-        String ret = sym.name + "(";
+        String ret = "";
+        if (sym.isConstructor()) {
+            ret += sym.owner.name;
+        } else {
+            ret += sym.name;
+        }
+        ret += "(";
 
         String c = "";
         if (sym.params != null) {
@@ -205,12 +212,12 @@ public class ScriptPropagate {
                     JCFieldAccess f = (JCFieldAccess) meth;
                     Type.ClassType ct = (Type.ClassType)f.selected.type;
                     Symbol.ClassSymbol cs = (Symbol.ClassSymbol)ct.tsym;
-                    s += cs.fullname + "::" + f.sym.toString();
+                    s += cs.fullname + "::" + methodToStringErasure((MethodSymbol)f.sym);
                     break;
                 case JCTree.IDENT:
                     JCIdent i = (JCIdent) meth;
                     Symbol.ClassSymbol css = (Symbol.ClassSymbol) i.sym.owner;
-                    s += css.fullname + "::" + i.sym;
+                    s += css.fullname + "::" + methodToStringErasure((MethodSymbol)i.sym);
                     break;
                 default:
                     throw new RuntimeException("++BUG!! ScriptPropagate::logPropagateError");
